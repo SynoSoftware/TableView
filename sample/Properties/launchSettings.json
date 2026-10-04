@@ -1,9 +1,9 @@
 {
   "profiles": {
-    "Synapse.Sample (Package)": {
+    "Sample (Package)": {
       "commandName": "MsixPackage"
     },
-    "Synapse.Sample (Unpackaged)": {
+    "Sample (Unpackaged)": {
       "commandName": "Project"
     }
   }

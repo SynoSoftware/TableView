@@ -2,12 +2,12 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Foundation;
 
-namespace Synapse_Sample;
+namespace Syno.TableViewSample.Probe;
 
 /// <summary>
 /// Probe stand-in for the table's row panel. Measures to a fixed total width far
 /// wider than any viewport and subtracts a table-owned horizontal offset at arrange
-/// time, exactly as winui3/docs/archive/tableview-design.md section 3 describes.
+/// time, exactly as lib/TableView/docs/archive/tableview-design.md section 3 describes.
 /// </summary>
 public sealed class RowPanel : Panel
 {
@@ -74,7 +74,7 @@ public sealed class RowPanel : Panel
     }
 }
 
-public sealed class ProbeItem
+public sealed class Item
 {
     public int Index { get; init; }
     public string Name { get; init; } = "";

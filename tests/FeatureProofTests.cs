@@ -5,10 +5,9 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 using Windows.Foundation;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// An independent pass over the whole feature list, taken without reference to any earlier claim.
@@ -26,21 +25,21 @@ public class FeatureProofTests
     // ================================================================ F01 columns
 
     /// <summary>
-    /// The eleven columns of Appendix A.1 at their declared widths, with the first-run visible set
-    /// of seven. Same schema the torrent host declares.
+    /// The eleven download columns at their declared widths, with the first-run visible set of
+    /// seven.
     /// </summary>
     [TestMethod]
     public Task F01_ElevenColumnsResolveWithTheDeclaredWidthsAndSevenVisible() =>
         TestHost.RunAsync(async () =>
         {
-            TableView table = await TorrentSchema.LoadAsync();
+            Table table = await Downloads.LoadAsync();
 
             string[] order = TableHarness.Order(table);
             Proof.Note("F01 resolved order: " + string.Join(", ", order));
             Assert.AreEqual(11, order.Length, "the schema resolves eleven columns");
-            CollectionAssert.AreEqual(TorrentSchema.Ids, order);
+            CollectionAssert.AreEqual(Downloads.Ids, order);
 
-            foreach ((string id, double width, double min) in TorrentSchema.Declared)
+            foreach ((string id, double width, double min) in Downloads.Declared)
             {
                 Assert.AreEqual(width, TableHarness.ResolvedWidth(table, id), $"{id} width");
                 Assert.AreEqual(
@@ -72,8 +71,8 @@ public class FeatureProofTests
     [TestMethod]
     public Task F01_TheHeaderRealizesOneCellPerVisibleColumn() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
-        List<TableHeaderCell> cells = TorrentSchema.HeaderCells(table);
+        Table table = await Downloads.LoadAsync();
+        List<Header.Cell> cells = Downloads.HeaderCells(table);
 
         string realized = string.Join(", ", cells.Select(c => $"{ColumnId(c)}:{c.ActualWidth}"));
         Proof.Note("F01 realized header cells: " + realized);
@@ -96,33 +95,33 @@ public class FeatureProofTests
     [TestMethod]
     public Task F02_HeaderActivationCyclesAscendingDescendingNatural() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
-        TableHeaderStrip strip = TorrentSchema.Strip(table);
-        TableHeaderCell queue = TorrentSchema.HeaderCells(table).Single(c => ColumnId(c) == "queue");
+        Table table = await Downloads.LoadAsync();
+        Header.Strip strip = Downloads.Strip(table);
+        Header.Cell queue = Downloads.HeaderCells(table).Single(c => ColumnId(c) == "queue");
 
-        List<TableLayoutChangeKind> kinds = new();
+        List<LayoutChange> kinds = new();
         table.LayoutChanged += (_, kind) => kinds.Add(kind);
 
-        Proof.Note("F02 natural: " + TorrentSchema.ViewNames(table));
-        CollectionAssert.AreEqual(TorrentSchema.NaturalNames, TorrentSchema.ViewNameArray(table));
+        Proof.Note("F02 natural: " + Downloads.ViewNames(table));
+        CollectionAssert.AreEqual(Downloads.NaturalNames, Downloads.ViewNameArray(table));
 
         Assert.IsTrue(ActivateSort(strip, queue), "the header resolved a sortable column");
-        Proof.Note("F02 ascending:  " + TorrentSchema.ViewNames(table));
-        CollectionAssert.AreEqual(TorrentSchema.QueueAscending, TorrentSchema.ViewNameArray(table));
+        Proof.Note("F02 ascending:  " + Downloads.ViewNames(table));
+        CollectionAssert.AreEqual(Downloads.QueueAscending, Downloads.ViewNameArray(table));
 
         ActivateSort(strip, queue);
-        Proof.Note("F02 descending: " + TorrentSchema.ViewNames(table));
+        Proof.Note("F02 descending: " + Downloads.ViewNames(table));
         CollectionAssert.AreEqual(
-            TorrentSchema.QueueAscending.Reverse().ToArray(), TorrentSchema.ViewNameArray(table));
+            Downloads.QueueAscending.Reverse().ToArray(), Downloads.ViewNameArray(table));
 
         ActivateSort(strip, queue);
-        Proof.Note("F02 natural:    " + TorrentSchema.ViewNames(table));
-        CollectionAssert.AreEqual(TorrentSchema.NaturalNames, TorrentSchema.ViewNameArray(table));
+        Proof.Note("F02 natural:    " + Downloads.ViewNames(table));
+        CollectionAssert.AreEqual(Downloads.NaturalNames, Downloads.ViewNameArray(table));
 
         CollectionAssert.AreEqual(
             new[]
             {
-                TableLayoutChangeKind.Sort, TableLayoutChangeKind.Sort, TableLayoutChangeKind.Sort,
+                LayoutChange.Sort, LayoutChange.Sort, LayoutChange.Sort,
             },
             kinds,
             "one LayoutChanged per activation");
@@ -132,24 +131,24 @@ public class FeatureProofTests
     [TestMethod]
     public Task F02_ASecondColumnTakesOverAtAscending() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
-        TableHeaderStrip strip = TorrentSchema.Strip(table);
-        List<TableHeaderCell> cells = TorrentSchema.HeaderCells(table);
+        Table table = await Downloads.LoadAsync();
+        Header.Strip strip = Downloads.Strip(table);
+        List<Header.Cell> cells = Downloads.HeaderCells(table);
 
         ActivateSort(strip, cells.Single(c => ColumnId(c) == "queue"));
         ActivateSort(strip, cells.Single(c => ColumnId(c) == "queue"));
         Assert.AreEqual("queue", table.Layout.SortColumnId);
-        Assert.AreEqual(TableSortDirection.Descending, table.Layout.SortDirection);
+        Assert.AreEqual(SortDirection.Descending, table.Layout.SortDirection);
 
         ActivateSort(strip, cells.Single(c => ColumnId(c) == "name"));
-        TableLayout state = table.Layout;
+        ColumnLayout state = table.Layout;
         Proof.Note($"F02 after switching column: sort={state.SortColumnId} {state.SortDirection}");
 
         Assert.AreEqual("name", state.SortColumnId);
-        Assert.AreEqual(TableSortDirection.Ascending, state.SortDirection);
+        Assert.AreEqual(SortDirection.Ascending, state.SortDirection);
         CollectionAssert.AreEqual(
-            TorrentSchema.NaturalNames.OrderBy(n => n, StringComparer.Ordinal).ToArray(),
-            TorrentSchema.ViewNameArray(table));
+            Downloads.NaturalNames.OrderBy(n => n, StringComparer.Ordinal).ToArray(),
+            Downloads.ViewNameArray(table));
     });
 
     /// <summary>The sort indicator, read off the realized header rather than off the sort state.</summary>
@@ -157,12 +156,12 @@ public class FeatureProofTests
     public Task F02_TheActiveHeaderShowsTheDirectionGlyphAndAnnouncesIt() =>
         TestHost.RunAsync(async () =>
         {
-            TableView table = await TorrentSchema.LoadAsync();
-            TableHeaderStrip strip = TorrentSchema.Strip(table);
-            TableHeaderCell queue =
-                TorrentSchema.HeaderCells(table).Single(c => ColumnId(c) == "queue");
-            TableHeaderCell name =
-                TorrentSchema.HeaderCells(table).Single(c => ColumnId(c) == "name");
+            Table table = await Downloads.LoadAsync();
+            Header.Strip strip = Downloads.Strip(table);
+            Header.Cell queue =
+                Downloads.HeaderCells(table).Single(c => ColumnId(c) == "queue");
+            Header.Cell name =
+                Downloads.HeaderCells(table).Single(c => ColumnId(c) == "name");
 
             Assert.AreEqual(("", Visibility.Collapsed, string.Empty), Glyph(queue));
 
@@ -194,16 +193,16 @@ public class FeatureProofTests
     public Task F03_AHeaderDragShowsAnInsertionIndicatorAndMovesTheColumn() =>
         TestHost.RunAsync(async () =>
         {
-            TableView table = await TorrentSchema.LoadAsync();
-            TableHeaderStrip strip = TorrentSchema.Strip(table);
+            Table table = await Downloads.LoadAsync();
+            Header.Strip strip = Downloads.Strip(table);
             FrameworkElement marker = Marker(strip);
             object name = Column(table, "name");
 
             Assert.AreEqual(Visibility.Collapsed, marker.Visibility, "idle: no indicator");
 
             // What OnPointerPressed does on a passive header, then what the threshold crossing does.
-            Proof.Call(strip, "Begin", HeaderGesture(strip, "Pressed"), name, 1u, 60d);
-            Proof.SetField(strip, "_gesture", HeaderGesture(strip, "Dragging"));
+            Proof.Call(strip, "Begin", Proof.Parse(strip, "_gesture", "Pressed"), name, 1u, 60d);
+            Proof.SetField(strip, "_gesture", Proof.Parse(strip, "_gesture", "Dragging"));
 
             // Drag right, over the middle of "status" (visible span 370..480).
             Proof.Call(strip, "MoveInsertionMarker", 460d);
@@ -232,19 +231,19 @@ public class FeatureProofTests
     [TestMethod]
     public Task F03_TheRealizedHeaderAndRowsFollowTheMove() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
+        Table table = await Downloads.LoadAsync();
 
         Proof.Note("F03 header before: " + string.Join(
-            ", ", TorrentSchema.HeaderCells(table).Select(c => ColumnId(c))));
+            ", ", Downloads.HeaderCells(table).Select(c => ColumnId(c))));
 
         Assert.IsTrue(MoveColumn(table, Column(table, "size"), 0));
         table.UpdateLayout();
 
-        string[] header = TorrentSchema.HeaderCells(table).Select(c => ColumnId(c)).ToArray();
+        string[] header = Downloads.HeaderCells(table).Select(c => ColumnId(c)).ToArray();
         Proof.Note("F03 header after:  " + string.Join(", ", header));
         Assert.AreEqual("size", header[0]);
 
-        List<TableCellsPanel> rows = TorrentSchema.RowPanels(table);
+        List<CellsPanel> rows = Downloads.RowPanels(table);
         Proof.Note($"F03 realized row panels = {rows.Count}, " +
                    $"cells per row = {string.Join(",", rows.Select(r => r.Children.Count))}");
         Assert.IsTrue(rows.Count > 0, "rows realized");
@@ -270,13 +269,13 @@ public class FeatureProofTests
     [TestMethod]
     public Task F04_ASeparatorDragResizesOneColumnAndReportsOnce() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
-        TableHeaderStrip strip = TorrentSchema.Strip(table);
+        Table table = await Downloads.LoadAsync();
+        Header.Strip strip = Downloads.Strip(table);
 
         int events = 0;
         table.LayoutChanged += (_, kind) =>
         {
-            Assert.AreEqual(TableLayoutChangeKind.ColumnResize, kind);
+            Assert.AreEqual(LayoutChange.Resize, kind);
             events++;
         };
 
@@ -308,8 +307,8 @@ public class FeatureProofTests
     [TestMethod]
     public Task F04_EscapeDuringAResizeLeavesTheWidthAlone() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
-        TableHeaderStrip strip = TorrentSchema.Strip(table);
+        Table table = await Downloads.LoadAsync();
+        Header.Strip strip = Downloads.Strip(table);
         int events = 0;
         table.LayoutChanged += (_, _) => events++;
 
@@ -324,7 +323,7 @@ public class FeatureProofTests
     });
 
     /// <summary>The width the release would apply. Nothing else in the gesture changes a width.</summary>
-    private static double Preview(TableHeaderStrip strip) =>
+    private static double Preview(Header.Strip strip) =>
         Proof.Field<double>(strip, "_previewWidth");
 
     /// <summary>
@@ -333,37 +332,37 @@ public class FeatureProofTests
     [TestMethod]
     public Task F04_ADoubleClickOnASeparatorFitsThatColumn() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
-        TableHeaderStrip strip = TorrentSchema.Strip(table);
+        Table table = await Downloads.LoadAsync();
+        Header.Strip strip = Downloads.Strip(table);
 
-        List<TableLayoutChangeKind> kinds = new();
+        List<LayoutChange> kinds = new();
         table.LayoutChanged += (_, kind) => kinds.Add(kind);
 
         object? separator = Proof.Call(strip, "SeparatorNear", 150d);
         Assert.IsNotNull(separator, "x=150 is the separator after 'name'");
-        table.AutoFitColumn("name");
+        table.Fit(table.Columns.Single(c => c.Id == "name"));
 
         double fitted = TableHarness.ResolvedWidth(table, "name");
         Proof.Note($"F04 fit 'name': 150 -> {fitted}, kinds={string.Join(",", kinds)}");
         Assert.AreNotEqual(150d, fitted, "the fit changed the width");
         Assert.IsTrue(fitted >= 90, "and stayed inside the column's own minimum");
-        CollectionAssert.AreEqual(new[] { TableLayoutChangeKind.AutoFit }, kinds);
+        CollectionAssert.AreEqual(new[] { LayoutChange.Fit }, kinds);
     });
 
     [TestMethod]
     public Task F04_FitVisibleColumnsReportsTheWholeOperationOnce() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
+        Table table = await Downloads.LoadAsync();
         double[] before = TableHarness.VisibleColumns(table).Select(v => v.Width).ToArray();
 
         int events = 0;
         table.LayoutChanged += (_, kind) =>
         {
-            Assert.AreEqual(TableLayoutChangeKind.AutoFit, kind);
+            Assert.AreEqual(LayoutChange.Fit, kind);
             events++;
         };
 
-        table.AutoFitVisibleColumns();
+        table.FitColumns();
 
         double[] after = TableHarness.VisibleColumns(table).Select(v => v.Width).ToArray();
         Proof.Note("F04 fit-visible before: " + string.Join(", ", before));
@@ -381,10 +380,10 @@ public class FeatureProofTests
     public Task F05_TheHeaderMenuOpensWithACheckableItemPerColumnAndTheCommands() =>
         TestHost.RunAsync(async () =>
         {
-            TableView table = await TorrentSchema.LoadAsync();
-            TableHeaderStrip strip = TorrentSchema.Strip(table);
-            TableHeaderCell name =
-                TorrentSchema.HeaderCells(table).Single(c => ColumnId(c) == "name");
+            Table table = await Downloads.LoadAsync();
+            Header.Strip strip = Downloads.Strip(table);
+            Header.Cell name =
+                Downloads.HeaderCells(table).Single(c => ColumnId(c) == "name");
 
             // The strip answers ContextRequested by opening this menu. Both halves are checked:
             // that the request opens a popup, and what the menu it opens holds.
@@ -440,9 +439,9 @@ public class FeatureProofTests
     [TestMethod]
     public Task F05_TheColumnToggleHidesAndShowsAColumnInPlace() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
-        TableHeaderStrip strip = TorrentSchema.Strip(table);
-        TableHeaderCell name = TorrentSchema.HeaderCells(table).Single(c => ColumnId(c) == "name");
+        Table table = await Downloads.LoadAsync();
+        Header.Strip strip = Downloads.Strip(table);
+        Header.Cell name = Downloads.HeaderCells(table).Single(c => ColumnId(c) == "name");
 
         // Widen 'status' first, so the show can be checked to keep the resolved width.
         Proof.Call(strip, "BeginResizeAt", 480d, 1u);
@@ -452,15 +451,15 @@ public class FeatureProofTests
 
         await InvokeMenuCommand(table, name, "name", "Status");
         table.UpdateLayout();
-        string[] hidden = TorrentSchema.HeaderCells(table).Select(c => ColumnId(c)).ToArray();
+        string[] hidden = Downloads.HeaderCells(table).Select(c => ColumnId(c)).ToArray();
         Proof.Note("F05 after hiding status: " + string.Join(", ", hidden));
         CollectionAssert.AreEqual(
             new[] { "name", "progress", "queue", "speed", "peers", "size" }, hidden);
-        Assert.AreEqual(6, TorrentSchema.RowPanels(table)[0].Children.Count, "rows lost the cell too");
+        Assert.AreEqual(6, Downloads.RowPanels(table)[0].Children.Count, "rows lost the cell too");
 
         await InvokeMenuCommand(table, name, "name", "Status");
         table.UpdateLayout();
-        string[] shown = TorrentSchema.HeaderCells(table).Select(c => ColumnId(c)).ToArray();
+        string[] shown = Downloads.HeaderCells(table).Select(c => ColumnId(c)).ToArray();
         Proof.Note("F05 after showing status: " + string.Join(", ", shown) +
                    $" width={TableHarness.ResolvedWidth(table, "status")}");
         CollectionAssert.AreEqual(
@@ -473,20 +472,20 @@ public class FeatureProofTests
     [TestMethod]
     public Task F05_HideThisColumnAndTheMoveCommandsRunFromTheMenu() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
+        Table table = await Downloads.LoadAsync();
 
-        TableHeaderCell queue = TorrentSchema.HeaderCells(table).Single(c => ColumnId(c) == "queue");
+        Header.Cell queue = Downloads.HeaderCells(table).Single(c => ColumnId(c) == "queue");
         await InvokeMenuCommand(table, queue, "queue", "Move left");
         table.UpdateLayout();
-        string[] moved = TorrentSchema.HeaderCells(table).Select(c => ColumnId(c)).ToArray();
+        string[] moved = Downloads.HeaderCells(table).Select(c => ColumnId(c)).ToArray();
         Proof.Note("F05 after 'Move left' on queue: " + string.Join(", ", moved));
         CollectionAssert.AreEqual(
             new[] { "name", "progress", "queue", "status", "speed", "peers", "size" }, moved);
 
-        TableHeaderCell status = TorrentSchema.HeaderCells(table).Single(c => ColumnId(c) == "status");
+        Header.Cell status = Downloads.HeaderCells(table).Single(c => ColumnId(c) == "status");
         await InvokeMenuCommand(table, status, "status", "Hide column “Status”");
         table.UpdateLayout();
-        string[] hidden = TorrentSchema.HeaderCells(table).Select(c => ColumnId(c)).ToArray();
+        string[] hidden = Downloads.HeaderCells(table).Select(c => ColumnId(c)).ToArray();
         Proof.Note("F05 after hiding the status column: " + string.Join(", ", hidden));
         CollectionAssert.AreEqual(
             new[] { "name", "progress", "queue", "speed", "peers", "size" }, hidden);
@@ -496,8 +495,8 @@ public class FeatureProofTests
     [TestMethod]
     public Task F05_TheLastVisibleColumnsToggleIsDisabled() => TestHost.RunAsync(async () =>
     {
-        TableView table = await TorrentSchema.LoadAsync();
-        TableHeaderStrip strip = TorrentSchema.Strip(table);
+        Table table = await Downloads.LoadAsync();
+        Header.Strip strip = Downloads.Strip(table);
 
         foreach (string id in new[] { "progress", "status", "queue", "speed", "peers", "size" })
         {
@@ -507,7 +506,7 @@ public class FeatureProofTests
 
         table.UpdateLayout();
         _ = strip;
-        TableHeaderCell only = TorrentSchema.HeaderCells(table).Single();
+        Header.Cell only = Downloads.HeaderCells(table).Single();
         Assert.AreEqual("name", ColumnId(only));
 
         List<MenuFlyoutItemBase> items = MenuFor(table, "name").Items.ToList();
@@ -531,8 +530,8 @@ public class FeatureProofTests
     public Task F06_OrderVisibilityWidthsAndSortSurviveASerializedRoundTrip() =>
         TestHost.RunAsync(async () =>
         {
-            TableView first = await TorrentSchema.LoadAsync();
-            TableHeaderStrip strip = TorrentSchema.Strip(first);
+            Table first = await Downloads.LoadAsync();
+            Header.Strip strip = Downloads.Strip(first);
 
             MoveColumn(first, Column(first, "size"), 0);
             SetVisibility(first, "peers", false);
@@ -541,22 +540,22 @@ public class FeatureProofTests
                 .First(v => v.Id == "size").Width, 1u);
             Proof.Call(strip, "TrackResize", 137d);
             Proof.Call(strip, "CompleteResize");
-            ActivateSort(strip, TorrentSchema.HeaderCells(first).Single(c => ColumnId(c) == "queue"));
-            ActivateSort(strip, TorrentSchema.HeaderCells(first).Single(c => ColumnId(c) == "queue"));
+            ActivateSort(strip, Downloads.HeaderCells(first).Single(c => ColumnId(c) == "queue"));
+            ActivateSort(strip, Downloads.HeaderCells(first).Single(c => ColumnId(c) == "queue"));
 
-            TableLayout saved = first.Layout;
+            ColumnLayout saved = first.Layout;
             string json = JsonSerializer.Serialize(saved);
             Proof.Note("F06 saved layout: " + json);
 
-            TableLayout reloaded = JsonSerializer.Deserialize<TableLayout>(json)!;
+            ColumnLayout reloaded = JsonSerializer.Deserialize<ColumnLayout>(json)!;
 
-            TableView second = TorrentSchema.Build();
-            second.ItemsSource = TorrentSchema.Rows();
+            Table second = Downloads.Build();
+            second.ItemsSource = Downloads.Rows();
             second.Layout = reloaded;
             await TableHarness.LoadAsync(second);
             second.UpdateLayout();
 
-            TableLayout restored = second.Layout;
+            ColumnLayout restored = second.Layout;
             Proof.Note("F06 restored order:      " + string.Join(", ", restored.Order));
             Proof.Note("F06 restored visible:    " + string.Join(
                 ", ", TableHarness.VisibleColumns(second).Select(v => v.Id)));
@@ -572,11 +571,11 @@ public class FeatureProofTests
                 saved.Widths.OrderBy(v => v.Key).ToArray(),
                 restored.Widths.OrderBy(v => v.Key).ToArray());
             Assert.AreEqual("queue", restored.SortColumnId);
-            Assert.AreEqual(TableSortDirection.Descending, restored.SortDirection);
+            Assert.AreEqual(SortDirection.Descending, restored.SortDirection);
 
             CollectionAssert.AreEqual(
-                TorrentSchema.QueueAscending.Reverse().ToArray(),
-                TorrentSchema.ViewNameArray(second),
+                Downloads.QueueAscending.Reverse().ToArray(),
+                Downloads.ViewNameArray(second),
                 "the restored sort produced the restored view order");
 
             Assert.AreEqual("size", TableHarness.VisibleColumns(second)[0].Id);
@@ -678,7 +677,7 @@ public class FeatureProofTests
         CollectionAssert.AreEqual(new[] { "k0", "k1", "k2", "k3", "k4", "k5" }, h.SelectedKeys());
 
         int page = h.RowsPerPage();
-        h.Table.Selection = TableSelection.Empty;
+        h.Table.Selection = Selection.Empty;
         h.MoveBy(1, false);
         h.MoveBy(page, false);
         Proof.Note($"F08 PageDown ({page} rows/page): current={h.CurrentKey()}");
@@ -730,7 +729,7 @@ public class FeatureProofTests
     public Task F09_AMarqueeFromEmptySurfaceSelectsTheRowsItCovers() => TestHost.RunAsync(async () =>
     {
         SelectionHarness h = await SelectionHarness.LoadAsync(
-            6, configure: t => t.IsMarqueeSelectionEnabled = true, height: 400);
+            6, configure: t => t.IsMarqueeEnabled = true, height: 400);
         ListView list = h.HostedList();
         FrameworkElement overlay = Overlay(h.Table);
 
@@ -783,15 +782,15 @@ public class FeatureProofTests
     public Task F09_AMarqueeIsOnByDefaultAndRefusedWhenWithdrawn() => TestHost.RunAsync(async () =>
     {
         SelectionHarness h = await SelectionHarness.LoadAsync(6, height: 300);
-        Assert.IsTrue(h.Table.IsMarqueeSelectionEnabled, "on by default");
+        Assert.IsTrue(h.Table.IsMarqueeEnabled, "on by default");
 
         Gesture.PressEmpty(h, new Point(10, 10));
         Assert.IsTrue((bool)Proof.Call(h.Table, "CanCommitGesture")!);
 
-        h.Table.IsMarqueeSelectionEnabled = false;
+        h.Table.IsMarqueeEnabled = false;
         Assert.IsFalse((bool)Proof.Call(h.Table, "CanCommitGesture")!);
 
-        h.Table.IsMarqueeSelectionEnabled = true;
+        h.Table.IsMarqueeEnabled = true;
         h.Table.SelectionMode = ListViewSelectionMode.Single;
         Proof.Call(h.Table, "SyncSelectionPolicy");
         Proof.Note("F09 marquee in Single mode allowed = " +
@@ -836,7 +835,7 @@ public class FeatureProofTests
             0, h.SelectedKeys().Length, "and the selection the gesture started from comes back");
 
         // Once reordering is on the same press is the drag: the rule never guesses between the two.
-        h.Table.IsRowReorderingEnabled = true;
+        h.Table.CanReorder = true;
         Gesture.Press(h, row: h[2], item: h[2], originY: rowHeight * 2.5);
         Assert.AreEqual("RowDrag", Proof.Call(h.Table, "GestureAtThreshold")!.ToString());
         Proof.Call(h.Table, "CancelGesture");
@@ -855,22 +854,22 @@ public class FeatureProofTests
             SelectionHarness h = await SelectionHarness.LoadAsync(8, height: 400);
             ListView list = h.HostedList();
 
-            List<TableRowContextRequestedEventArgs> requests = new();
-            h.Table.RowContextRequested += (_, e) => requests.Add(e);
+            List<ItemContextRequestedEventArgs> requests = new();
+            h.Table.ItemContextRequested += (_, e) => requests.Add(e);
 
             // A request on an unselected row replaces the selection with it.
             FrameworkElement container = (FrameworkElement)list.ContainerFromItem(h[5]);
             Assert.IsTrue((bool)Proof.Call(
                 h.Table, "RequestRowContext", h[5], container, (Point?)new Point(12, 9))!);
 
-            TableRowContextRequestedEventArgs first = requests.Single();
+            ItemContextRequestedEventArgs first = requests.Single();
             Proof.Note($"F10 request on row 5: item={first.Item} " +
                        $"packet={string.Join(",", first.SelectedItems)} " +
-                       $"target={first.PlacementTarget.GetType().Name} point={first.RelativePoint}");
+                       $"target={first.Target.GetType().Name} point={first.Position}");
             Assert.AreSame(h[5], first.Item);
             CollectionAssert.AreEqual(new object[] { h[5] }, first.SelectedItems.ToArray());
-            Assert.AreSame(container, first.PlacementTarget);
-            Assert.AreEqual(new Point(12, 9), first.RelativePoint);
+            Assert.AreSame(container, first.Target);
+            Assert.AreEqual(new Point(12, 9), first.Position);
 
             // A request inside an existing packet keeps the packet.
             h.Table.Selection = new(new object[] { h[1], h[2], h[3] }, h[2]);
@@ -898,7 +897,7 @@ public class FeatureProofTests
         h.Table.RefreshView();
 
         int requests = 0;
-        h.Table.RowContextRequested += (_, _) => requests++;
+        h.Table.ItemContextRequested += (_, _) => requests++;
 
         FrameworkElement container =
             (FrameworkElement)h.HostedList().ContainerFromItem(h[3]);
@@ -920,10 +919,10 @@ public class FeatureProofTests
     public Task F11_DraggingASelectedRowMovesTheWholePacket() => TestHost.RunAsync(async () =>
     {
         SelectionHarness h = await SelectionHarness.LoadAsync(
-            8, configure: t => t.IsRowReorderingEnabled = true, height: 400);
+            8, configure: t => t.CanReorder = true, height: 400);
 
-        List<TableRowsReorderRequestedEventArgs> requests = new();
-        h.Table.RowsReorderRequested += (_, e) => requests.Add(e);
+        List<ReorderRequestedEventArgs> requests = new();
+        h.Table.ReorderRequested += (_, e) => requests.Add(e);
 
         ListView list = h.HostedList();
         FrameworkElement marker = InsertionMarker(h.Table);
@@ -957,12 +956,12 @@ public class FeatureProofTests
 
         Proof.Call(h.Table, "CompleteRowDrag", rowHeight * 5.6);
 
-        TableRowsReorderRequestedEventArgs request = requests.Single();
-        Proof.Note($"F11 request: moving={string.Join(",", request.MovingItems)} " +
-                   $"insertBefore={request.InsertBeforeItem}");
+        ReorderRequestedEventArgs request = requests.Single();
+        Proof.Note($"F11 request: moving={string.Join(",", request.Items)} " +
+                   $"before={request.Before}");
         CollectionAssert.AreEqual(
-            new object[] { h[1], h[2], h[3] }, request.MovingItems.ToArray());
-        Assert.AreSame(h[6], request.InsertBeforeItem);
+            new object[] { h[1], h[2], h[3] }, request.Items.ToArray());
+        Assert.AreSame(h[6], request.Before);
 
         CollectionAssert.AreEqual(
             new object[] { rows[0], rows[1], rows[2], rows[3], rows[4], rows[5], rows[6], rows[7] },
@@ -971,13 +970,13 @@ public class FeatureProofTests
         Assert.AreEqual(Visibility.Collapsed, marker.Visibility);
 
         // Apply the request the way the queue host would, and check it lands where it asked.
-        List<Row> moving = request.MovingItems.Cast<Row>().ToList();
+        List<Row> moving = request.Items.Cast<Row>().ToList();
         foreach (Row row in moving)
         {
             rows.Remove(row);
         }
 
-        int at = rows.IndexOf((Row)request.InsertBeforeItem!);
+        int at = rows.IndexOf((Row)request.Before!);
         for (int i = 0; i < moving.Count; i++)
         {
             rows.Insert(at + i, moving[i]);
@@ -997,13 +996,13 @@ public class FeatureProofTests
             8,
             configure: t =>
             {
-                t.IsRowReorderingEnabled = true;
-                t.IsMarqueeSelectionEnabled = true;
+                t.CanReorder = true;
+                t.IsMarqueeEnabled = true;
             },
             height: 400);
 
-        List<TableRowsReorderRequestedEventArgs> requests = new();
-        h.Table.RowsReorderRequested += (_, e) => requests.Add(e);
+        List<ReorderRequestedEventArgs> requests = new();
+        h.Table.ReorderRequested += (_, e) => requests.Add(e);
 
         h.Table.Selection = new(new object[] { h[0], h[1] }, h[0]);
         double rowHeight =
@@ -1020,18 +1019,18 @@ public class FeatureProofTests
         Proof.Call(h.Table, "BeginRowDrag", h.HostedList(), h[5]);
         Proof.Call(h.Table, "CompleteRowDrag", rowHeight * 0.2);
 
-        Proof.Note($"F11 unselected drag: moving={string.Join(",", requests.Single().MovingItems)} " +
-                   $"insertBefore={requests.Single().InsertBeforeItem} " +
+        Proof.Note($"F11 unselected drag: moving={string.Join(",", requests.Single().Items)} " +
+                   $"before={requests.Single().Before} " +
                    $"selection={string.Join(",", h.SelectedKeys())}");
-        CollectionAssert.AreEqual(new object[] { h[5] }, requests.Single().MovingItems.ToArray());
-        Assert.AreSame(h[0], requests.Single().InsertBeforeItem);
+        CollectionAssert.AreEqual(new object[] { h[5] }, requests.Single().Items.ToArray());
+        Assert.AreSame(h[0], requests.Single().Before);
         CollectionAssert.AreEqual(new[] { "k0", "k1" }, h.SelectedKeys(), "selection untouched");
     });
 
     /// <summary>
     /// The flag is the only owner of the gesture. It is off by default, because a reorder is a
     /// domain request and means something only where the host owns an order; and subscribing to
-    /// <c>RowsReorderRequested</c> no longer turns it on behind the flag's back, which used to make
+    /// <c>ReorderRequested</c> no longer turns it on behind the flag's back, which used to make
     /// an event subscription load-bearing behaviour that nothing in the API announced.
     /// </summary>
     [TestMethod]
@@ -1041,12 +1040,12 @@ public class FeatureProofTests
 
         Assert.IsFalse((bool)Proof.Call(h.Table, "CanBeginRowDrag", h[2])!, "off by default");
 
-        h.Table.RowsReorderRequested += (_, _) => { };
+        h.Table.ReorderRequested += (_, _) => { };
         Assert.IsFalse(
             (bool)Proof.Call(h.Table, "CanBeginRowDrag", h[2])!,
             "a handler alone does not turn it on");
 
-        h.Table.IsRowReorderingEnabled = true;
+        h.Table.CanReorder = true;
         Proof.Note("F11 with the opt-in: " + (bool)Proof.Call(h.Table, "CanBeginRowDrag", h[2])!);
         Assert.IsTrue((bool)Proof.Call(h.Table, "CanBeginRowDrag", h[2])!);
     });
@@ -1071,19 +1070,19 @@ public class FeatureProofTests
                 t.Schema<Row>()
                     .Sort(t.Columns[0], row => row.Key)
                     .Sort(t.Columns[1], row => -row.Rank);
-                t.IsRowReorderingEnabled = true;
+                t.CanReorder = true;
             },
             height: 400);
 
-        List<TableRowsReorderRequestedEventArgs> requests = new();
-        h.Table.RowsReorderRequested += (_, e) => requests.Add(e);
+        List<ReorderRequestedEventArgs> requests = new();
+        h.Table.ReorderRequested += (_, e) => requests.Add(e);
         ListView list = h.HostedList();
         double rowHeight = ((FrameworkElement)list.ContainerFromItem(h[0])).ActualHeight;
 
         Assert.IsTrue(
             (bool)Proof.Call(h.Table, "CanBeginRowDrag", h[2])!, "unsorted: the view is the row order");
 
-        TableLayout unsorted = h.Table.Layout;
+        ColumnLayout unsorted = h.Table.Layout;
         h.Table.Layout = unsorted with { SortColumnId = "b" };
         h.Table.UpdateLayout();
         Assert.IsFalse(
@@ -1103,7 +1102,7 @@ public class FeatureProofTests
             "sorted by the row-order column upward: offered");
 
         h.Table.Layout =
-            unsorted with { SortColumnId = "a", SortDirection = TableSortDirection.Descending };
+            unsorted with { SortColumnId = "a", SortDirection = SortDirection.Descending };
         h.Table.UpdateLayout();
         Assert.IsTrue(
             (bool)Proof.Call(h.Table, "CanBeginRowDrag", h[2])!, "and downward: offered");
@@ -1119,15 +1118,15 @@ public class FeatureProofTests
         Proof.Call(h.Table, "BeginRowDrag", list, h[5]);
         Proof.Call(h.Table, "CompleteRowDrag", rowHeight * 1.2);
 
-        TableRowsReorderRequestedEventArgs request = requests.Single();
-        Proof.Note($"F11 descending request: moving={string.Join(",", request.MovingItems)} " +
-                   $"insertBefore={request.InsertBeforeItem}");
+        ReorderRequestedEventArgs request = requests.Single();
+        Proof.Note($"F11 descending request: moving={string.Join(",", request.Items)} " +
+                   $"before={request.Before}");
         CollectionAssert.AreEqual(
             new object[] { h[4], h[5] },
-            request.MovingItems.ToArray(),
+            request.Items.ToArray(),
             "the packet is reported in row order, not in the order it stands on screen");
         Assert.AreSame(
-            h[7], request.InsertBeforeItem, "and goes before the row above the boundary, in row order");
+            h[7], request.Before, "and goes before the row above the boundary, in row order");
 
         // Applied in row order, the packet lands exactly where it was dropped once the view is
         // read downward again: k7, k5, k4, k6.
@@ -1163,17 +1162,17 @@ public class FeatureProofTests
                 {
                     // Both columns sort ascending by key, which is the source order, so sorting by
                     // b moves no row; only a is the row order.
-                    TableSchema<Row> schema = t.Schema<Row>();
-                    foreach (TableColumn column in t.Columns)
+                    Schema<Row> schema = t.Schema<Row>();
+                    foreach (Column column in t.Columns)
                     {
                         schema.Sort(column, row => row.Key);
                     }
 
                     t.Columns[0].DefinesRowOrder = true;
-                    t.IsRowReorderingEnabled = true;
+                    t.CanReorder = true;
                 },
                 height: 400);
-            h.Table.RowsReorderRequested += (_, _) => { };
+            h.Table.ReorderRequested += (_, _) => { };
             ListView list = h.HostedList();
             FrameworkElement marker = InsertionMarker(h.Table);
             double rowHeight = ((FrameworkElement)list.ContainerFromItem(h[0])).ActualHeight;
@@ -1211,15 +1210,15 @@ public class FeatureProofTests
                     t.Schema<Row>()
                         .Sort(t.Columns[0], row => row.Key)
                         .Sort(t.Columns[1], row => -row.Rank);
-                    t.IsRowReorderingEnabled = true;
+                    t.CanReorder = true;
                 },
                 height: 400);
-            h.Table.RowsReorderRequested += (_, _) => { };
-            List<TableLayoutChangeKind> changes = new();
+            h.Table.ReorderRequested += (_, _) => { };
+            List<LayoutChange> changes = new();
             h.Table.LayoutChanged += (_, kind) => changes.Add(kind);
             ListView list = h.HostedList();
 
-            TableLayout unsorted = h.Table.Layout;
+            ColumnLayout unsorted = h.Table.Layout;
             h.Table.Layout = unsorted with { SortColumnId = "b" };
             Assert.IsFalse(
                 (bool)Proof.Call(h.Table, "CanBeginRowDrag", h[2])!, "sorted by b: withheld");
@@ -1227,11 +1226,11 @@ public class FeatureProofTests
 
             SetVisibility(h.Table, "b", false);
 
-            TableLayoutChangeKind change = changes.Single();
+            LayoutChange change = changes.Single();
             Proof.Note($"F11 after hiding the sorted column: kind={change} " +
                        $"sort={h.Table.Layout.SortColumnId ?? "none"} " +
                        $"first row={((Row)list.Items[0]).Key}");
-            Assert.AreEqual(TableLayoutChangeKind.Visibility, change);
+            Assert.AreEqual(LayoutChange.Visibility, change);
             Assert.IsNull(h.Table.Layout.SortColumnId, "the one change leaves no sort behind");
             Assert.AreEqual("k0", ((Row)list.Items[0]).Key, "the view is back in natural order");
             Assert.IsTrue(
@@ -1295,7 +1294,7 @@ public class FeatureProofTests
             SelectionHarness h = await SelectionHarness.LoadAsync(
                 8, t => t.Schema<Row>().CanInteract(row => row.Interactive), height: 400);
 
-            List<TableItemInvokedEventArgs> invoked = new();
+            List<ItemInvokedEventArgs> invoked = new();
             h.Table.ItemInvoked += (_, e) => invoked.Add(e);
 
             h.Table.Selection = new(new object[] { h[2], h[3], h[4] }, h[3]);
@@ -1311,7 +1310,7 @@ public class FeatureProofTests
             // container and over the passive cells panel inside it.
             ListView list = h.HostedList();
             DependencyObject container = (DependencyObject)list.ContainerFromItem(h[3]);
-            DependencyObject cells = Proof.Descendant<TableCellsPanel>(container)!;
+            DependencyObject cells = Proof.Descendant<CellsPanel>(container)!;
             Proof.Note($"F12 hit test: container={h.HitTest(container)} cells={h.HitTest(cells)}");
             Assert.AreEqual("Row", h.HitTest(container));
             Assert.AreEqual("Row", h.HitTest(cells));
@@ -1333,12 +1332,12 @@ public class FeatureProofTests
     [TestMethod]
     public Task F13_LoadingEmptyAndNoResultsEachShowTheirOwnContent() => TestHost.RunAsync(async () =>
     {
-        TableView table = TorrentSchema.Build();
+        Table table = Downloads.Build();
         table.LoadingContent = "LOADING";
         table.EmptyContent = "EMPTY";
         table.NoResultsContent = "NO RESULTS";
-        table.Placeholder = TablePlaceholder.Loading;
-        table.ItemsSource = new ObservableCollection<TorrentRow>();
+        table.Placeholder = Placeholder.Loading;
+        table.ItemsSource = new ObservableCollection<Download>();
 
         await TableHarness.LoadAsync(table);
         table.UpdateLayout();
@@ -1351,15 +1350,15 @@ public class FeatureProofTests
         Assert.AreEqual("LOADING", layer.Content);
         Assert.AreEqual(Visibility.Visible, layer.Visibility);
 
-        table.Placeholder = TablePlaceholder.Empty;
+        table.Placeholder = Placeholder.Empty;
         Proof.Note($"F13 Placeholder=Empty -> '{layer.Content}' {layer.Visibility}");
         Assert.AreEqual("EMPTY", layer.Content);
 
-        table.Placeholder = TablePlaceholder.NoResults;
+        table.Placeholder = Placeholder.NoResults;
         Proof.Note($"F13 Placeholder=NoResults -> '{layer.Content}' {layer.Visibility}");
         Assert.AreEqual("NO RESULTS", layer.Content);
 
-        table.ItemsSource = TorrentSchema.Rows();
+        table.ItemsSource = Downloads.Rows();
         table.UpdateLayout();
         await Task.Delay(60);
         Proof.Note($"F13 with rows -> content={layer.Content ?? "(null)"} {layer.Visibility}");
@@ -1368,7 +1367,7 @@ public class FeatureProofTests
 
     // ================================================================ helpers
 
-    private static (string, Visibility, string) Glyph(TableHeaderCell cell)
+    private static (string, Visibility, string) Glyph(Header.Cell cell)
     {
         FontIcon icon = Proof.Descendant<FontIcon>(cell)
             ?? throw new AssertFailedException("The header cell realized no sort glyph.");
@@ -1379,53 +1378,47 @@ public class FeatureProofTests
     }
 
     /// <summary>The id of the column this realized header cell shows. The property is internal.</summary>
-    private static string ColumnId(TableHeaderCell cell) =>
-        ((TableColumn)cell.GetType()
+    private static string ColumnId(Header.Cell cell) =>
+        ((Column)cell.GetType()
             .GetProperty("Column", System.Reflection.BindingFlags.Instance
                 | System.Reflection.BindingFlags.NonPublic)!
             .GetValue(cell)!).Id!;
 
-    private static bool ActivateSort(TableHeaderStrip strip, TableHeaderCell cell) =>
+    private static bool ActivateSort(Header.Strip strip, Header.Cell cell) =>
         (bool)Proof.Call(strip, "ActivateSortFrom", cell)!;
 
     /// <summary>The internal <c>ResolvedColumn</c>, which the test assembly cannot name.</summary>
-    private static object Column(TableView table, string id) =>
-        Proof.Call(table, "RequireColumn", id)!;
+    private static object Column(Table table, string id) => TableHarness.ResolvedColumn(table, id);
 
-    private static bool MoveColumn(TableView table, object column, int boundary) =>
+    private static bool MoveColumn(Table table, object column, int boundary) =>
         (bool)Proof.Call(table, "MoveColumnTo", column, boundary, null)!;
 
-    private static void SetVisibility(TableView table, string id, bool visible) =>
+    private static void SetVisibility(Table table, string id, bool visible) =>
         Proof.Call(table, "SetColumnVisibility", Column(table, id), visible);
 
-    private static object HeaderGesture(TableHeaderStrip strip, string name) => Enum.Parse(
-        strip.GetType().GetNestedType("HeaderGesture",
-            System.Reflection.BindingFlags.NonPublic)!,
-        name);
-
-    private static FrameworkElement Marker(TableHeaderStrip strip) =>
+    private static FrameworkElement Marker(Header.Strip strip) =>
         Proof.Field<FrameworkElement>(strip, "_marker");
 
-    private static FrameworkElement Overlay(TableView table) =>
+    private static FrameworkElement Overlay(Table table) =>
         Proof.Field<FrameworkElement>(table, "_marqueeOverlay");
 
-    private static FrameworkElement InsertionMarker(TableView table) =>
+    private static FrameworkElement InsertionMarker(Table table) =>
         Proof.Field<FrameworkElement>(table, "_rowInsertionMarker");
 
     /// <summary>
     /// The menu the strip builds for this column — the very call <c>ShowMenu</c> makes. Reading the
     /// flyout's own items is exact; reading the popup's visual tree depends on realization timing.
     /// </summary>
-    private static MenuFlyout MenuFor(TableView table, string? columnId)
+    private static MenuFlyout MenuFor(Table table, string? columnId)
     {
-        Type type = typeof(TableView).Assembly.GetType("Synapse.TableHeaderMenu")!;
+        Type type = typeof(Table).Assembly.GetType("Syno.TableView.Header.Menu")!;
         return (MenuFlyout)type
             .GetMethod("Create", System.Reflection.BindingFlags.Static
                 | System.Reflection.BindingFlags.NonPublic)!
             .Invoke(null, new[] { table, columnId is null ? null : Column(table, columnId) })!;
     }
 
-    private static void CloseMenu(TableView table)
+    private static void CloseMenu(Table table)
     {
         foreach (Popup popup in VisualTreeHelper.GetOpenPopupsForXamlRoot(table.XamlRoot))
         {
@@ -1438,7 +1431,7 @@ public class FeatureProofTests
     /// peer, which is what raises its <c>Click</c>.
     /// </summary>
     private static async Task InvokeMenuCommand(
-        TableView table, TableHeaderCell at, string columnId, string command)
+        Table table, Header.Cell at, string columnId, string command)
     {
         MenuFlyout menu = MenuFor(table, columnId);
         MenuFlyoutItemBase item = FindItem(menu, command);
@@ -1493,10 +1486,7 @@ public class FeatureProofTests
             SelectionHarness h, object? item, Point origin, bool ctrl, bool shift)
         {
             Proof.Call(h.Table, "SyncSelectionPolicy");
-            Proof.SetField(h.Table, "_gesture", Enum.Parse(
-                typeof(TableView).GetNestedType("GesturePhase",
-                    System.Reflection.BindingFlags.NonPublic)!,
-                "Pressed"));
+            Proof.SetField(h.Table, "_gesture", Proof.Parse(h.Table, "_gesture", "Pressed"));
             Proof.SetField(h.Table, "_gesturePointerId", 1u);
             Proof.SetField(h.Table, "_gestureOrigin", origin);
             Proof.SetField(h.Table, "_gestureItem", item);

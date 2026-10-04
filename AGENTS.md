@@ -1,21 +1,23 @@
-# WinUI and Synapse
+# TableView
 
-Follow the [root instructions](../AGENTS.md). This directory contains the reusable
-Synapse library, sample, and control tests. The new product interface follows the
-[architecture](../docs/architecture.md); it is not the old Transmission client.
+Follow the [root instructions](../../AGENTS.md). This directory contains the
+reusable TableView library in [src](src/), its development hosts in
+[sample](sample/) and [tests](tests/), and its control documentation.
+[TableView.slnx](TableView.slnx) opens the library on its own. The product
+interface follows the [architecture](../../docs/architecture.md).
 
 ## Read for the change
 
 - Before designing or changing a product surface, read
-  [interface guidance](../docs/interface.md).
+  [interface guidance](../../docs/interface.md).
 - Before changing TableView behavior or its public API, read the relevant sections
   of the [contract](docs/tableview-contract.md), using the
   [table vocabulary](CONTEXT.md).
 - Before changing table state ownership, input, rendering, or layout, read the
   [implementation map](docs/tableview-implementation.md).
-- Text and formatting follow [localisation](../docs/localisation.md), including
-  generated control resources and live language changes.
-- Test scope follows [testing](../docs/testing.md). Building a WinUI test host
+- Text and formatting follow [localisation](../../docs/localisation.md), including
+  the control's own `en.json` and live language changes.
+- Test scope follows [testing](../../docs/testing.md). Building a WinUI test host
   does not run it; running it opens a real window and requires an explicit request.
 
 ## Control work
@@ -25,7 +27,7 @@ existing one, but a perceived flaw in the contract is a finding to resolve befor
 changing behavior. Do not change the specification merely to match a regression.
 
 Keep the control independent of torrent types, commands, persistence, and product
-preferences. The host owns domain policy; Synapse owns the mechanics described by
+preferences. The host owns domain policy; TableView owns the mechanics described by
 its contract. Use the existing non-torrent sample to check that new control
 behavior belongs in the library, rather than inventing another application host.
 
@@ -50,11 +52,10 @@ find those contracts. Keep live XAML bindings live; `x:Bind` defaults to one-tim
 
 ## Build and evidence
 
-Project files and [Synapse.slnx](Synapse.slnx) define the supported targets and
-package versions. Use Visual Studio MSBuild for the affected WinUI target. There
-is no product-engine build or release stager yet.
+Project files and [TinyTorrent.slnx](../../TinyTorrent.slnx) define the supported targets and
+package versions. Use Visual Studio MSBuild for the affected WinUI target.
 
-Keep [Directory.Build.props](Directory.Build.props)'s generated-output exclusions:
+Keep [Directory.Build.props](../../Directory.Build.props)'s generated-output exclusions:
 they prevent the XAML compiler's `bin-fl` output from re-entering source globs.
 If changing them, verify repeated builds do not deepen the output tree.
 

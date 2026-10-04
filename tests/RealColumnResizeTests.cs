@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 10's direct resize, driven with real mouse messages through the window. The separator
@@ -26,7 +25,7 @@ public class RealColumnResizeTests
         int events = 0;
         h.Table.LayoutChanged += (_, kind) =>
         {
-            Assert.AreEqual(TableLayoutChangeKind.ColumnResize, kind);
+            Assert.AreEqual(LayoutChange.Resize, kind);
             events++;
         };
 
@@ -93,7 +92,7 @@ public class RealColumnResizeTests
         int fits = 0;
         h.Table.LayoutChanged += (_, kind) =>
         {
-            Assert.AreEqual(TableLayoutChangeKind.AutoFit, kind);
+            Assert.AreEqual(LayoutChange.Fit, kind);
             fits++;
         };
 
@@ -110,7 +109,7 @@ public class RealColumnResizeTests
     });
 
     /// <summary>The first column takes bounds, so the clamp and the fit have known numbers.</summary>
-    private static void Bounded(TableView table)
+    private static void Bounded(Table table)
     {
         table.Columns[0].MinWidth = 120;
         table.Columns[0].MaxWidth = 300;

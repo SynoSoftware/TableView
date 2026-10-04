@@ -3,9 +3,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>A row whose cell declares its own width, so a fit has a known number to find.</summary>
 public sealed class FitRow
@@ -36,16 +35,17 @@ public class ColumnFitTests
     /// the cell as it is drawn, so the fitted width is the content plus this: a fit that left it
     /// out would produce a column that clips its own content by exactly this much.
     /// </summary>
-    private static double Inset(TableView table) => table.CellPadding.Left + table.CellPadding.Right;
+    private static double Inset(Table table) => table.CellPadding.Left + table.CellPadding.Right;
 
     // ------------------------------------------------------------------ what a fit measures
 
     [TestMethod]
     public Task AFitTakesTheWidthOfTheRealizedCells() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(Rows(20, 100), Column("a", 400));
+        Column a = Column("a", 400);
+        Table table = await LoadAsync(Rows(20, 100), a);
 
-        table.AutoFitColumn("a");
+        table.Fit(a);
 
         Assert.AreEqual(100 + Inset(table), TableHarness.ResolvedWidth(table, "a"), 0d);
     });
@@ -53,11 +53,11 @@ public class ColumnFitTests
     [TestMethod]
     public Task AFitTakesTheHeaderWhenTheHeaderIsTheWidest() => TestHost.RunAsync(async () =>
     {
-        TableColumn column = Column("a", 400);
+        Column column = Column("a", 400);
         column.Header = new Border { Width = 140, Height = 20 };
-        TableView table = await LoadAsync(Rows(20, 40), column);
+        Table table = await LoadAsync(Rows(20, 40), column);
 
-        table.AutoFitColumn("a");
+        table.Fit(column);
 
         Assert.AreEqual(
             140 + Inset(table) + SeparatorLine, TableHarness.ResolvedWidth(table, "a"), 0d);
@@ -66,14 +66,14 @@ public class ColumnFitTests
     [TestMethod]
     public Task AFitIsClampedToTheColumnLimits() => TestHost.RunAsync(async () =>
     {
-        TableColumn floor = Column("floor", 400);
+        Column floor = Column("floor", 400);
         floor.MinWidth = 200;
-        TableColumn ceiling = Column("ceiling", 100);
+        Column ceiling = Column("ceiling", 100);
         ceiling.MaxWidth = 60;
         ceiling.Header = new Border { Width = 300, Height = 20 };
-        TableView table = await LoadAsync(Rows(20, 20), floor, ceiling);
+        Table table = await LoadAsync(Rows(20, 20), floor, ceiling);
 
-        table.AutoFitVisibleColumns();
+        table.FitColumns();
 
         Assert.AreEqual(200d, TableHarness.ResolvedWidth(table, "floor"), 0d, "MinWidth wins");
         Assert.AreEqual(60d, TableHarness.ResolvedWidth(table, "ceiling"), 0d, "MaxWidth wins");
@@ -88,9 +88,10 @@ public class ColumnFitTests
     {
         List<FitRow> rows = Rows(500, 60);
         rows[400].CellWidth = 900;
-        TableView table = await LoadAsync(rows, Column("a", 400));
+        Column a = Column("a", 400);
+        Table table = await LoadAsync(rows, a);
 
-        table.AutoFitColumn("a");
+        table.Fit(a);
 
         Assert.AreEqual(60 + Inset(table), TableHarness.ResolvedWidth(table, "a"), 0d,
             "row 400 is not realized, so its 900 DIP cell is not part of the fit");
@@ -102,7 +103,7 @@ public class ColumnFitTests
         await Task.Delay(250);
         table.UpdateLayout();
 
-        table.AutoFitColumn("a");
+        table.Fit(a);
 
         Assert.AreEqual(900 + Inset(table), TableHarness.ResolvedWidth(table, "a"), 0d,
             "after scrolling, the same command finds it");
@@ -113,12 +114,13 @@ public class ColumnFitTests
     [TestMethod]
     public Task AFitOfAHiddenColumnDoesNothing() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(Rows(20, 100), Column("a", 400), Column("b", 300));
+        Column b = Column("b", 300);
+        Table table = await LoadAsync(Rows(20, 100), Column("a", 400), b);
         table.Layout = TestData.Layout(
             visibility: new Dictionary<string, bool> { ["b"] = false });
         Func<int> events = LayoutChanges(table);
 
-        table.AutoFitColumn("b");
+        table.Fit(b);
 
         Assert.AreEqual(300d, TableHarness.ResolvedWidth(table, "b"), 0d);
         Assert.AreEqual(0, events(), "a no-op fit reports nothing");
@@ -127,25 +129,26 @@ public class ColumnFitTests
     [TestMethod]
     public Task AFitOfANonResizableColumnDoesNothing() => TestHost.RunAsync(async () =>
     {
-        TableColumn fixedWidth = Column("a", 400);
+        Column fixedWidth = Column("a", 400);
         fixedWidth.CanResize = false;
-        TableView table = await LoadAsync(Rows(20, 100), fixedWidth);
+        Table table = await LoadAsync(Rows(20, 100), fixedWidth);
         Func<int> events = LayoutChanges(table);
 
-        table.AutoFitColumn("a");
+        table.Fit(fixedWidth);
 
         Assert.AreEqual(400d, TableHarness.ResolvedWidth(table, "a"), 0d);
         Assert.AreEqual(0, events());
     });
 
     [TestMethod]
-    public Task AnUnknownColumnIdIsAnArgumentError() => TestHost.RunAsync(async () =>
+    public Task AColumnTheTableDoesNotHoldIsAnArgumentError() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(Rows(4, 100), Column("a", 400));
+        Table table = await LoadAsync(Rows(4, 100), Column("a", 400));
 
-        ArgumentException error = Expect.Throws<ArgumentException>(() => table.AutoFitColumn("nope"));
+        ArgumentException error =
+            Expect.Throws<ArgumentException>(() => table.Fit(Column("a", 400)));
 
-        Assert.AreEqual("columnId", error.ParamName);
+        Assert.AreEqual("column", error.ParamName);
     });
 
     // ------------------------------------------------------------------ one notification
@@ -153,18 +156,18 @@ public class ColumnFitTests
     [TestMethod]
     public Task FittingEveryVisibleColumnReportsOnce() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(
+        Table table = await LoadAsync(
             Rows(20, 100), Column("a", 400), Column("b", 300), Column("c", 250));
         Func<int> events = LayoutChanges(table);
 
-        table.AutoFitVisibleColumns();
+        table.FitColumns();
 
         Assert.AreEqual(1, events(), "three fitted columns, one LayoutChanged");
         Assert.AreEqual(100 + Inset(table), TableHarness.ResolvedWidth(table, "a"), 0d);
         Assert.AreEqual(100 + Inset(table), TableHarness.ResolvedWidth(table, "b"), 0d);
         Assert.AreEqual(100 + Inset(table), TableHarness.ResolvedWidth(table, "c"), 0d);
 
-        table.AutoFitVisibleColumns();
+        table.FitColumns();
 
         Assert.AreEqual(1, events(), "a second fit changes nothing, so it reports nothing");
     });
@@ -172,13 +175,14 @@ public class ColumnFitTests
     [TestMethod]
     public Task AFitThatChangesAWidthReportsAResizedLayout() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(Rows(20, 100), Column("a", 400));
-        TableLayoutChangeKind? reported = null;
-        table.LayoutChanged += (_, kind) => reported = kind;
+        Column a = Column("a", 400);
+        Table table = await LoadAsync(Rows(20, 100), a);
+        LayoutChange? reported = null;
+        table.LayoutChanged += (_, change) => reported = change;
 
-        table.AutoFitColumn("a");
+        table.Fit(a);
 
-        Assert.AreEqual(TableLayoutChangeKind.AutoFit, reported);
+        Assert.AreEqual(LayoutChange.Fit, reported);
         Assert.AreEqual(100 + Inset(table), table.Layout.Widths["a"], 0d,
             "the snapshot read after the report carries the new width override");
     });
@@ -187,12 +191,12 @@ public class ColumnFitTests
 
     /// <summary>
     /// The separator the pointer grabs is centred on a column's trailing edge and moves with the
-    /// table's horizontal offset. This is the arithmetic <c>TableHeaderStrip</c> presses on.
+    /// table's horizontal offset. This is the arithmetic <c>Header.Strip</c> presses on.
     /// </summary>
     [TestMethod]
     public Task TheSeparatorZoneIsCentredOnEachTrailingEdge() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(Rows(4, 100), Column("a", 200), Column("b", 150));
+        Table table = await LoadAsync(Rows(4, 100), Column("a", 200), Column("b", 150));
 
         Assert.AreEqual(0, Near(table, 200), "a's edge");
         Assert.AreEqual(0, Near(table, 196), "the zone reaches into a");
@@ -213,9 +217,9 @@ public class ColumnFitTests
     [TestMethod]
     public Task ARenderedHeaderCellEndsWhereTheLayoutSaysItDoes() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(Rows(4, 100), Column("a", 200), Column("b", 150));
+        Table table = await LoadAsync(Rows(4, 100), Column("a", 200), Column("b", 150));
 
-        TableHeaderStrip strip = Descendants<TableHeaderStrip>(table).First();
+        Header.Strip strip = Descendants<Header.Strip>(table).First();
         Panel panel = (Panel)strip.GetType()
             .GetProperty("Panel", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(strip)!;
@@ -237,9 +241,9 @@ public class ColumnFitTests
 
     private static readonly DataTemplate CellTemplate = (DataTemplate)XamlReader.Load(CellXaml);
 
-    private static TableColumn Column(string id, double defaultWidth)
+    private static Column Column(string id, double defaultWidth)
     {
-        TableColumn column = TestData.Column(id, defaultWidth);
+        Column column = TestData.Column(id, defaultWidth);
         column.MinWidth = 10;
         column.CellTemplate = CellTemplate;
         return column;
@@ -256,9 +260,9 @@ public class ColumnFitTests
         return rows;
     }
 
-    private static async Task<TableView> LoadAsync(List<FitRow> rows, params TableColumn[] columns)
+    private static async Task<Table> LoadAsync(List<FitRow> rows, params Column[] columns)
     {
-        TableView table = TestData.Table(columns);
+        Table table = TestData.Table(columns);
         table.Width = 700;
         table.Height = 220;
         table.ItemsSource = rows;
@@ -271,7 +275,7 @@ public class ColumnFitTests
     }
 
     /// <summary>Starts counting <c>LayoutChanged</c> now; call the result to read the count.</summary>
-    private static Func<int> LayoutChanges(TableView table)
+    private static Func<int> LayoutChanges(Table table)
     {
         int count = 0;
         table.LayoutChanged += (_, _) => count++;
@@ -279,10 +283,10 @@ public class ColumnFitTests
     }
 
     /// <summary>The separator index at this header-strip x, at the grab tolerance section 10 uses.</summary>
-    private static int Near(TableView table, double x) =>
+    private static int Near(Table table, double x) =>
         TableHarness.TrailingEdgeNear(table, x, tolerance: 4);
 
-    private static ListView HostedList(TableView table) =>
+    private static ListView HostedList(Table table) =>
         Descendants<ListView>(table).First();
 
     private static IEnumerable<T> Descendants<T>(DependencyObject root)

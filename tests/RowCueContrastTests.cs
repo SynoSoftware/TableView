@@ -8,7 +8,7 @@ using Windows.Foundation;
 using Windows.Storage.Streams;
 using Windows.UI;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 19: table-owned non-text information — here the selected-row cue, which is the only
@@ -62,7 +62,7 @@ public class RowCueContrastTests
                     t.Resources["ListViewItemSelectionIndicatorBrush"] =
                         new SolidColorBrush(Color.FromArgb(255, 255, 185, 0));
                 }
-                foreach (Synapse.TableColumn column in t.Columns)
+                foreach (Column column in t.Columns)
                 {
                     column.CellTemplate = blank;
                 }

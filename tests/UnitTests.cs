@@ -1,12 +1,11 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Proves the test host itself works: plain logic, the XAML runtime, the control's resource
-/// lookup, and one full construct-and-load of <see cref="TableView"/>.
+/// lookup, and one full construct-and-load of <see cref="Table"/>.
 /// </summary>
 [TestClass]
 public class TestHostTests
@@ -25,10 +24,9 @@ public class TestHostTests
     [TestMethod]
     public Task TheControlCanReadItsOwnResourceFile() => TestHost.RunAsync(() =>
     {
-        // TableHeaderStrip's constructor reads Synapse/Resources through
-        // ResourceLoader.GetDefaultResourceFilePath(). It throws when the merged resources.pri is
-        // missing beside the running executable.
-        TableHeaderStrip strip = new();
+        // Header.Strip's constructor reads its accessible name from the en.json embedded in the
+        // control's library.
+        Header.Strip strip = new();
 
         Assert.IsNotNull(strip);
         return Task.CompletedTask;
@@ -37,7 +35,7 @@ public class TestHostTests
     [TestMethod]
     public Task ATableViewCanBeConstructedAndLoaded() => TestHost.RunAsync(async () =>
     {
-        TableView table = TestData.Table(TestData.Column("a"));
+        Table table = TestData.Table(TestData.Column("a"));
 
         await TableHarness.LoadAsync(table);
 

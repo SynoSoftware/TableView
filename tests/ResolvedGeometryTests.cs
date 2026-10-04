@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// The single resolved geometry the header strip and every realized row read.
@@ -11,9 +10,9 @@ namespace Synapse_Tests;
 [TestClass]
 public class ResolvedGeometryTests
 {
-    private static async Task<TableView> ThreeColumnTableAsync()
+    private static async Task<Table> ThreeColumnTableAsync()
     {
-        TableView table = TestData.Table(
+        Table table = TestData.Table(
             TestData.Column("a", 100), TestData.Column("b", 200), TestData.Column("c", 150));
         await TableHarness.LoadAsync(table);
         return table;
@@ -22,7 +21,7 @@ public class ResolvedGeometryTests
     [TestMethod]
     public Task CumulativeOffsetsFollowTheVisibleWidths() => TestHost.RunAsync(async () =>
     {
-        TableView table = await ThreeColumnTableAsync();
+        Table table = await ThreeColumnTableAsync();
 
         (string Id, double Offset, double Width)[] visible = TableHarness.VisibleColumns(table);
 
@@ -35,7 +34,7 @@ public class ResolvedGeometryTests
     [TestMethod]
     public Task TotalWidthIsTheSumOfTheVisibleWidths() => TestHost.RunAsync(async () =>
     {
-        TableView table = await ThreeColumnTableAsync();
+        Table table = await ThreeColumnTableAsync();
 
         Assert.AreEqual(450d, TableHarness.TotalWidth(table), 0d);
     });
@@ -43,7 +42,7 @@ public class ResolvedGeometryTests
     [TestMethod]
     public Task HidingAMiddleColumnShiftsTheColumnsAfterIt() => TestHost.RunAsync(async () =>
     {
-        TableView table = await ThreeColumnTableAsync();
+        Table table = await ThreeColumnTableAsync();
 
         table.Layout = TestData.Layout(
             visibility: new Dictionary<string, bool> { ["b"] = false });
@@ -59,7 +58,7 @@ public class ResolvedGeometryTests
     [TestMethod]
     public Task AHiddenColumnKeepsItsPositionAndItsStoredWidth() => TestHost.RunAsync(async () =>
     {
-        TableView table = await ThreeColumnTableAsync();
+        Table table = await ThreeColumnTableAsync();
 
         table.Layout = TestData.Layout(
             visibility: new Dictionary<string, bool> { ["b"] = false },
@@ -76,7 +75,7 @@ public class ResolvedGeometryTests
     [TestMethod]
     public Task AWidthOverrideWinsOverTheBaselineAndAResetRestoresIt() => TestHost.RunAsync(async () =>
     {
-        TableView table = await ThreeColumnTableAsync();
+        Table table = await ThreeColumnTableAsync();
 
         table.Layout = TestData.Layout(widths: new Dictionary<string, double> { ["b"] = 340 });
 
@@ -93,7 +92,7 @@ public class ResolvedGeometryTests
     [TestMethod]
     public Task ReorderingChangesTheOffsetsButNotTheWidths() => TestHost.RunAsync(async () =>
     {
-        TableView table = await ThreeColumnTableAsync();
+        Table table = await ThreeColumnTableAsync();
 
         table.Layout = TestData.Layout(order: new[] { "c", "b", "a" });
 
@@ -110,11 +109,11 @@ public class ResolvedGeometryTests
     public Task TheBaselineWidthIsTheDeclaredDefaultClampedToTheColumnBounds() =>
         TestHost.RunAsync(async () =>
         {
-            TableColumn narrow = TestData.Column("a", 20);
+            Column narrow = TestData.Column("a", 20);
             narrow.MinWidth = 60;
-            TableColumn wide = TestData.Column("b", 900);
+            Column wide = TestData.Column("b", 900);
             wide.MaxWidth = 400;
-            TableView table = TestData.Table(narrow, wide);
+            Table table = TestData.Table(narrow, wide);
 
             await TableHarness.LoadAsync(table);
 

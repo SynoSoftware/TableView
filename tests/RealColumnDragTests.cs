@@ -8,9 +8,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Windows.Foundation;
 using Windows.System;
 using Windows.UI.Input.Preview.Injection;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 11's drag end to end: real mouse messages through the window, so the press, the
@@ -32,7 +31,7 @@ public class RealColumnDragTests
         int events = 0;
         h.Table.LayoutChanged += (_, kind) =>
         {
-            Assert.AreEqual(TableLayoutChangeKind.ColumnMove, kind);
+            Assert.AreEqual(LayoutChange.Move, kind);
             events++;
         };
 
@@ -132,7 +131,7 @@ internal sealed class DragHarness
     private const int VirtualScreenWidth = 78;
     private const int VirtualScreenHeight = 79;
 
-    private DragHarness(TableView table, TableHeaderStrip strip, InputInjector injector, IntPtr window)
+    private DragHarness(Table table, Header.Strip strip, InputInjector injector, IntPtr window)
     {
         Table = table;
         Strip = strip;
@@ -140,9 +139,9 @@ internal sealed class DragHarness
         Window = window;
     }
 
-    internal TableView Table { get; }
+    internal Table Table { get; }
 
-    internal TableHeaderStrip Strip { get; }
+    internal Header.Strip Strip { get; }
 
     private InputInjector Injector { get; }
 
@@ -151,9 +150,9 @@ internal sealed class DragHarness
     internal FrameworkElement Marker => (FrameworkElement)Field(Strip, "_marker")!;
 
     /// <summary>Three 200 DIP columns in the live window, with the window in the foreground.</summary>
-    internal static async Task<DragHarness> LoadAsync(Action<TableView>? configure = null)
+    internal static async Task<DragHarness> LoadAsync(Action<Table>? configure = null)
     {
-        TableView table = TestData.Table(
+        Table table = TestData.Table(
             TestData.Column("a", 200), TestData.Column("b", 200), TestData.Column("c", 200));
         table.Width = 700;
         table.Height = 200;
@@ -175,7 +174,7 @@ internal sealed class DragHarness
                 "be injected without sending them to another application.");
         }
 
-        TableHeaderStrip strip = Descendants<TableHeaderStrip>(table).First();
+        Header.Strip strip = Descendants<Header.Strip>(table).First();
         InputInjector injector = InputInjector.TryCreate()
             ?? throw new AssertFailedException("InputInjector.TryCreate() returned null.");
 

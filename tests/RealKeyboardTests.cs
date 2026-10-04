@@ -7,7 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Windows.System;
 using Windows.UI.Input.Preview.Injection;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// The keyboard path end to end: real key messages through the window, so the key mapping and the

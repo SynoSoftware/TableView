@@ -7,9 +7,8 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 12's generated header menu. The rules it exists for are the two invariants: a command is
@@ -37,7 +36,7 @@ public class ColumnMenuTests
     [TestMethod]
     public Task TheMenuOverAHeaderCarriesEverySection12Command() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "c");
+        Table table = await LoadAsync("a", "b", "c");
 
         // The column list is in this menu, not behind a door into a second one: a submenu is a
         // separate popup that closes on a toggle whatever the root menu does about its own close.
@@ -50,7 +49,7 @@ public class ColumnMenuTests
     public Task UnusedHeaderSpaceGetsTheColumnListItselfRatherThanADoorToIt() =>
         TestHost.RunAsync(async () =>
         {
-            TableView table = await LoadAsync("a", "b");
+            Table table = await LoadAsync("a", "b");
 
             // No column to act on, so the whole menu is the column set: the one command that
             // applies to all of them, then every column, with no submenu in between.
@@ -62,7 +61,7 @@ public class ColumnMenuTests
     [TestMethod]
     public Task TheColumnListNamesEveryColumnIncludingTheHiddenOnes() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "c");
+        Table table = await LoadAsync("a", "b", "c");
         SetVisibility(table, "b", false);
 
         MenuFlyoutItem[] toggles = ColumnEntries(Menu(table, "a"));
@@ -79,7 +78,7 @@ public class ColumnMenuTests
     public Task MoveLeftAndMoveRightAreEnabledOnlyWhereThereIsSomewhereToMove() =>
         TestHost.RunAsync(async () =>
         {
-            TableView table = await LoadAsync("a", "b", "c");
+            Table table = await LoadAsync("a", "b", "c");
 
             Assert.IsFalse(Item(Menu(table, "a"), MoveLeft).IsEnabled, "a is already first");
             Assert.IsTrue(Item(Menu(table, "a"), MoveRight).IsEnabled);
@@ -90,10 +89,10 @@ public class ColumnMenuTests
     [TestMethod]
     public Task AColumnTheHostFixedOffersNoSizingCommand() => TestHost.RunAsync(async () =>
     {
-        TableColumn fixedWidth = TestData.Column("a");
+        Column fixedWidth = TestData.Column("a");
         fixedWidth.CanResize = false;
 
-        TableView table = await LoadAsync(fixedWidth, TestData.Column("b"));
+        Table table = await LoadAsync(fixedWidth, TestData.Column("b"));
         MenuFlyout menu = Menu(table, "a");
 
         Assert.IsFalse(Item(menu, FitThis("A")).IsEnabled);
@@ -104,12 +103,12 @@ public class ColumnMenuTests
     public Task FitVisibleColumnsIsDisabledWhenNoVisibleColumnCanBeResized() =>
         TestHost.RunAsync(async () =>
         {
-            TableColumn first = TestData.Column("a");
-            TableColumn second = TestData.Column("b");
+            Column first = TestData.Column("a");
+            Column second = TestData.Column("b");
             first.CanResize = false;
             second.CanResize = false;
 
-            TableView table = await LoadAsync(first, second);
+            Table table = await LoadAsync(first, second);
 
             Assert.IsFalse(Item(Menu(table, "a"), FitVisible).IsEnabled);
         });
@@ -117,10 +116,10 @@ public class ColumnMenuTests
     [TestMethod]
     public Task AColumnTheHostRequiresCannotBeHidden() => TestHost.RunAsync(async () =>
     {
-        TableColumn required = TestData.Column("a");
+        Column required = TestData.Column("a");
         required.CanHide = false;
 
-        TableView table = await LoadAsync(required, TestData.Column("b"));
+        Table table = await LoadAsync(required, TestData.Column("b"));
 
         Assert.IsFalse(Item(Menu(table, "a"), Hide("A")).IsEnabled);
         Assert.IsFalse(Toggle(Menu(table, "a"), "A").IsEnabled);
@@ -132,7 +131,7 @@ public class ColumnMenuTests
     [TestMethod]
     public Task TheLastVisibleColumnCannotBeHidden() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b");
+        Table table = await LoadAsync("a", "b");
         SetVisibility(table, "b", false);
 
         MenuFlyout menu = Menu(table, "a");
@@ -140,7 +139,7 @@ public class ColumnMenuTests
         Assert.IsFalse(Toggle(menu, "A").IsEnabled, "and its toggle cannot be unchecked either");
         Assert.IsTrue(Toggle(menu, "B").IsEnabled, "the hidden column can still come back");
 
-        Func<int> events = LayoutChanges(table, TableLayoutChangeKind.Visibility);
+        Func<int> events = LayoutChanges(table, LayoutChange.Visibility);
         SetVisibility(table, "a", false);
 
         Assert.IsTrue(TableHarness.IsVisible(table, "a"), "the operation itself refuses it too");
@@ -152,9 +151,9 @@ public class ColumnMenuTests
     [TestMethod]
     public Task ShowingAColumnAgainKeepsItsPlaceAndItsWidth() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "c");
+        Table table = await LoadAsync("a", "b", "c");
         table.Layout = TestData.Layout(widths: new Dictionary<string, double> { ["b"] = 220 });
-        Func<int> events = LayoutChanges(table, TableLayoutChangeKind.Visibility);
+        Func<int> events = LayoutChanges(table, LayoutChange.Visibility);
 
         SetVisibility(table, "b", false);
 
@@ -179,7 +178,7 @@ public class ColumnMenuTests
     [TestMethod]
     public Task MoveLeftFromTheMenuLandsWhereTheDragWouldLandIt() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "hidden", "c");
+        Table table = await LoadAsync("a", "b", "hidden", "c");
         SetVisibility(table, "hidden", false);
         table.UpdateLayout();
 
@@ -201,7 +200,7 @@ public class ColumnMenuTests
     public Task TheMenuOpensOnTheInvokingHeaderRunsItsCommandAndStaysOpen() =>
         TestHost.RunAsync(async () =>
         {
-            TableView table = await LoadAsync("a", "b");
+            Table table = await LoadAsync("a", "b");
             await OpenMenuAsync(table, visibleIndex: 1);
 
             await InvokeAsync(table, MoveLeft);
@@ -223,12 +222,12 @@ public class ColumnMenuTests
 
     // ------------------------------------------------------------------ helpers
 
-    private static Task<TableView> LoadAsync(params string[] ids) =>
+    private static Task<Table> LoadAsync(params string[] ids) =>
         LoadAsync(ids.Select(id => TestData.Column(id)).ToArray());
 
-    private static async Task<TableView> LoadAsync(params TableColumn[] columns)
+    private static async Task<Table> LoadAsync(params Column[] columns)
     {
-        TableView table = TestData.Table(columns);
+        Table table = TestData.Table(columns);
         table.Width = 700;
         table.Height = 200;
 
@@ -269,11 +268,11 @@ public class ColumnMenuTests
     private static MenuFlyoutItem Toggle(MenuFlyout menu, string displayName) =>
         ColumnEntries(menu).Single(item => item.Text == displayName);
 
-    private static string[] VisibleIds(TableView table) =>
+    private static string[] VisibleIds(Table table) =>
         TableHarness.VisibleColumns(table).Select(column => column.Id).ToArray();
 
     /// <summary>Starts counting <c>LayoutChanged</c> now; call the result to read the count.</summary>
-    private static Func<int> LayoutChanges(TableView table, TableLayoutChangeKind expected)
+    private static Func<int> LayoutChanges(Table table, LayoutChange expected)
     {
         int count = 0;
         table.LayoutChanged += (_, kind) =>
@@ -284,16 +283,16 @@ public class ColumnMenuTests
         return () => count;
     }
 
-    private static TableHeaderStrip Strip(TableView table) => Descendants<TableHeaderStrip>(table).First();
+    private static Header.Strip Strip(Table table) => Descendants<Header.Strip>(table).First();
 
-    private static Control HeaderCell(TableHeaderStrip strip, int visibleIndex) =>
+    private static Control HeaderCell(Header.Strip strip, int visibleIndex) =>
         (Control)((Panel)Field(strip, "_panel")!).Children[visibleIndex];
 
-    private static IReadOnlyList<Popup> OpenPopups(TableView table) =>
+    private static IReadOnlyList<Popup> OpenPopups(Table table) =>
         VisualTreeHelper.GetOpenPopupsForXamlRoot(table.XamlRoot);
 
     /// <summary>The realized item with this label inside the open flyout.</summary>
-    private static MenuFlyoutItem OpenItem(TableView table, string text)
+    private static MenuFlyoutItem OpenItem(Table table, string text)
     {
         foreach (Popup popup in OpenPopups(table))
         {
@@ -332,14 +331,14 @@ public class ColumnMenuTests
         }
     }
 
-    // The menu, the resolved columns it acts on and the strip's show are all internal to Synapse,
+    // The menu, the resolved columns it acts on and the strip's show are all internal to TableView,
     // which grants no InternalsVisibleTo. Reflection is the only way to reach them without widening
     // the control's public surface for a test.
 
-    private static MenuFlyout Menu(TableView table, string? activeId)
+    private static MenuFlyout Menu(Table table, string? activeId)
     {
-        Type type = typeof(TableView).Assembly.GetType("Synapse.TableHeaderMenu")
-            ?? throw new MissingMemberException("Synapse.TableHeaderMenu");
+        Type type = typeof(Table).Assembly.GetType("Syno.TableView.Header.Menu")
+            ?? throw new MissingMemberException("Syno.TableView.Header.Menu");
 
         object?[] arguments =
         {
@@ -354,9 +353,9 @@ public class ColumnMenuTests
     /// Open the menu the way the strip opens it, on the header cell at this visible index. Only the
     /// platform's own <c>ContextRequested</c> is left out; it cannot be raised from a test.
     /// </summary>
-    private static async Task<Control> OpenMenuAsync(TableView table, int visibleIndex)
+    private static async Task<Control> OpenMenuAsync(Table table, int visibleIndex)
     {
-        TableHeaderStrip strip = Strip(table);
+        Header.Strip strip = Strip(table);
         Control cell = HeaderCell(strip, visibleIndex);
 
         strip.GetType()
@@ -367,7 +366,7 @@ public class ColumnMenuTests
         return cell;
     }
 
-    private static async Task InvokeAsync(TableView table, string text)
+    private static async Task InvokeAsync(Table table, string text)
     {
         MenuFlyoutItem item = OpenItem(table, text);
         Assert.IsTrue(item.IsEnabled, $"'{text}' is disabled.");
@@ -379,7 +378,7 @@ public class ColumnMenuTests
         await Task.Delay(250);
     }
 
-    private static void SetVisibility(TableView table, string id, bool visible) =>
+    private static void SetVisibility(Table table, string id, bool visible) =>
         Invoke(table, "SetColumnVisibility", TableHarness.ResolvedColumn(table, id), visible);
 
     private static object? Invoke(object target, string method, params object[] arguments) =>

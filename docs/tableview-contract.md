@@ -3,18 +3,15 @@
 - Status: component design specification
 - Scope: version 1
 - Audience: engineers building dense, interactive WinUI 3 data lists
-- Normative content: sections 1–20 and Appendix B; Appendix A is reference
-  material
+- Normative content: sections 1–20 and the appendix
 
 This is the reusable control's behavior and public API authority. The
 [implementation map](tableview-implementation.md) records the existing code and
 known gaps; the contract does not claim that every requirement is implemented.
-[Product architecture](../../docs/architecture.md) owns application scope, and
-[testing](../../docs/testing.md) owns validation scope. Appendix A describes an
-earlier torrent host; its transport, optimistic state, and domain model are not
-requirements for the new libtorrent application.
+[Product architecture](../../../docs/architecture.md) owns application scope, and
+[testing](../../../docs/testing.md) owns validation scope.
 
-`TableView` is a reusable WinUI 3 control for large, changing collections whose
+`Table` is a reusable WinUI 3 control for large, changing collections whose
 cells need arbitrary XAML content. It combines native collection virtualization
 and selection with shared column layout, sorting, layout persistence, and
 row-reorder requests. It fills the gap between a basic list and a
@@ -22,7 +19,7 @@ spreadsheet-style grid without taking ownership of application data or actions.
 
 ## 1. Purpose and intended experience
 
-For users, `TableView` is a familiar desktop table: they can scan dense rows,
+For users, `Table` is a familiar desktop table: they can scan dense rows,
 interact with rich controls inside cells, sort data, change column order and
 visibility, resize columns, select ranges, and return to their saved layout.
 
@@ -62,7 +59,7 @@ finishing it over the following frames, off the UI thread, or progressively, is
 correct. A partial result that keeps up beats a complete one that arrives late.
 
 **What sluggish means here, in the owner's own words.** Two behaviours, both
-observed on the torrent host, and both about work the table does after an input
+observed on the original host, and both about work the table does after an input
 rather than about when an input is answered:
 
 - a sort header that shows nothing for more than 100 ms after the click;
@@ -114,7 +111,7 @@ a finding to raise, not a thing to delete.
 
 ## 2. Scope and intentional non-goals
 
-`TableView` MUST NOT know about:
+`Table` MUST NOT know about:
 
 - domain entities, domain state names, or a particular row view-model type;
 - domain commands, domain context-menu content, navigation, or application
@@ -123,7 +120,7 @@ a finding to raise, not a thing to delete.
 - page chrome, host-specific embedded modes, or outer page layout;
 - a host's localization resources or theme-token system.
 
-Those concerns belong to the host. `TableView` owns presentation and interaction
+Those concerns belong to the host. `Table` owns presentation and interaction
 mechanics only.
 
 This is a dense item table, not a spreadsheet. Version 1 does not include:
@@ -185,7 +182,7 @@ host source + columns
     -> gesture events and layout snapshot back to host
 ```
 
-### `TableView` owns
+### `Table` owns
 
 - the visible projection and stable sort of `ItemsSource`;
 - realized row containers;
@@ -232,21 +229,21 @@ contract; an implementation may use equivalent language conventions without
 changing these behaviors:
 
 ```csharp
-public sealed class TableView : Control
+public sealed class Table : Control
 {
     public IEnumerable? ItemsSource { get; set; }
-    public ObservableCollection<TableColumn> Columns { get; }
-    public TableSchema<TRow> Schema<TRow>();
+    public ObservableCollection<Column> Columns { get; }
+    public Schema<TRow> Schema<TRow>();
 
     public ListViewSelectionMode SelectionMode { get; set; } // default Extended
-    public TableSelection Selection { get; set; }
+    public Selection Selection { get; set; }
     public static void SetSuppressRowGestures(DependencyObject element, bool value);
     public static bool GetSuppressRowGestures(DependencyObject element);
 
-    public TablePlaceholder Placeholder { get; set; } // Empty | Loading | NoResults
-    public bool IsMarqueeSelectionEnabled { get; set; } // default true
-    public bool IsRowReorderingEnabled { get; set; }    // default false
-    public Thickness CellPadding { get; set; }          // default 12,6,12,6
+    public Placeholder Placeholder { get; set; } // Empty | Loading | NoResults
+    public bool IsMarqueeEnabled { get; set; }   // default true
+    public bool CanReorder { get; set; }         // default false
+    public Thickness CellPadding { get; set; }   // default 12,6,12,6
 
     public object? LoadingContent { get; set; }
     public DataTemplate? LoadingContentTemplate { get; set; }
@@ -255,49 +252,45 @@ public sealed class TableView : Control
     public object? NoResultsContent { get; set; }
     public DataTemplate? NoResultsContentTemplate { get; set; }
 
-    public TableLayout Layout { get; set; }
-    public TableSort? Sort { get; set; }
-    public TimeSpan SortSettleInterval { get; set; }
-    public bool IsFitAllButtonEnabled { get; set; }     // default false
+    public ColumnLayout Layout { get; set; }
+    public Sort? Sort { get; set; }
+    public TimeSpan SortInterval { get; set; }
+    public bool ShowsFitButton { get; set; }     // default false
     public void RefreshView();
-    public void AutoFitColumn(string columnId);
-    public void AutoFitVisibleColumns();
-    public void ResetColumnLayout();
-    public static FontFamily IconFontFamily { get; }
+    public void Fit(Column column);
+    public void FitColumns();
+    public void ResetLayout();
 
-    public event EventHandler<TableSelectionStateChangedEventArgs>
-        SelectionStateChanged;
-    public event EventHandler<TableItemInvokedEventArgs> ItemInvoked;
-    public event EventHandler<TableRowContextRequestedEventArgs>
-        RowContextRequested;
-    public event EventHandler<TableRowsReorderRequestedEventArgs>
-        RowsReorderRequested;
-    public event EventHandler<TableLayoutChangeKind> LayoutChanged;
+    public event EventHandler<Selection> SelectionChanged;
+    public event EventHandler<ItemInvokedEventArgs> ItemInvoked;
+    public event EventHandler<ItemContextRequestedEventArgs> ItemContextRequested;
+    public event EventHandler<ReorderRequestedEventArgs> ReorderRequested;
+    public event EventHandler<LayoutChange> LayoutChanged;
 }
 
-public sealed class TableSchema<TRow>
+public sealed class Schema<TRow>
 {
-    public TableSchema<TRow> Key(Func<TRow, string> key);
-    public TableSchema<TRow> CanInteract(Func<TRow, bool> predicate);
-    public TableSchema<TRow> Sort<TKey>(TableColumn column, Func<TRow, TKey> key)
+    public Schema<TRow> Key(Func<TRow, string> key);
+    public Schema<TRow> CanInteract(Func<TRow, bool> predicate);
+    public Schema<TRow> Sort<TKey>(Column column, Func<TRow, TKey> key)
         where TKey : IComparable<TKey>;
 }
 
-public sealed class TableSelection
+public sealed class Selection
 {
-    public static readonly TableSelection Empty;
-    public TableSelection(IEnumerable<object> items, object? current = null);
+    public static readonly Selection Empty;
+    public Selection(IEnumerable<object> items, object? current = null);
     public IReadOnlyList<object> Items { get; }
     public object? Current { get; }
 }
 
-public readonly record struct TableSort(
-    TableColumn Column,
-    TableSortDirection Direction = TableSortDirection.Ascending);
+public readonly record struct Sort(
+    Column Column,
+    SortDirection Direction = SortDirection.Ascending);
 ```
 
 `ItemsSource`, `Placeholder`, `CellPadding`, and the runtime interaction flags
-`IsMarqueeSelectionEnabled` and `IsRowReorderingEnabled` are bindable
+`IsMarqueeEnabled` and `CanReorder` are bindable
 dependency properties. Marquee selection defaults to enabled and row
 reordering to disabled, and the asymmetry is deliberate: a marquee is a
 selection gesture and is meaningful in every table, while a reorder is a
@@ -305,9 +298,9 @@ domain request and is meaningful only where the host owns an order. A press in
 the table body that nothing else competes for must do something, so the marquee
 is on; most tables have no domain order, so the reorder is off.
 
-`IsRowReorderingEnabled` is the only owner of that capability. A gesture is
+`CanReorder` is the only owner of that capability. A gesture is
 offered when the flag is true, the view shows the row order, and the row is
-eligible; having a `RowsReorderRequested` handler is not part of the test,
+eligible; having a `ReorderRequested` handler is not part of the test,
 because two owners of one capability eventually disagree. The view shows
 the row order when it is unsorted, which is the source order, or sorted either
 way by the column whose `DefinesRowOrder` is true (section 6); under any other
@@ -340,7 +333,7 @@ under section 6.1; changing language does not change structural schema.
 The structural values of `Columns` form the immutable baseline. The table keeps separate effective
 order, visibility, width overrides, and sort state. A drag, resize, visibility
 change, or an assignment to `Layout` MUST NOT mutate the definitions.
-`ResetColumnLayout()` restores the captured baseline. Because that baseline has
+`ResetLayout()` restores the captured baseline. Because that baseline has
 no sort criterion, reset also clears local sort and returns to natural order.
 
 `Selection`, `Sort`, and `Layout` are settable properties rather than method
@@ -401,10 +394,10 @@ The control deliberately has two extension mechanisms, with no overlap:
 | `Schema<TRow>().Key` | synchronous policy callback | stable item identity | allocate, fetch, mutate, or depend on visual state |
 | `Schema<TRow>().CanInteract` | synchronous policy callback | display-only versus interactive rows | execute a command or change selection |
 | `Schema<TRow>().Sort` | synchronous column callback | the value a column orders a row by | format UI, mutate items, or call RPC |
-| `SelectionStateChanged` | host event | publish an optional external selection/current projection | continuously feed its own output back |
+| `SelectionChanged` | host event | publish an optional external selection/current projection | continuously feed its own output back |
 | `ItemInvoked` | host event | primary domain action | assume an action was completed |
-| `RowContextRequested` | host event | construct/show a domain menu | put domain menu logic in the table |
-| `RowsReorderRequested` | host event | request a domain reorder | mutate `ItemsSource` through `TableView`; the host may update its own source after the event |
+| `ItemContextRequested` | host event | construct/show a domain menu | put domain menu logic in the table |
+| `ReorderRequested` | host event | request a domain reorder | mutate `ItemsSource` through `Table`; the host may update its own source after the event |
 | `LayoutChanged` | host event | debounce a persisted layout snapshot | write settings on every pointer movement |
 
 Policy callbacks are called on the UI thread and MUST be pure, synchronous, and
@@ -417,29 +410,29 @@ sort instead of the table deciding invisibly.
 
 Events are the component's callback API for completed gestures or table-state
 changes. They fire only after the table has completed its own mechanics.
-`SelectionStateChanged` can also result from assigning `Selection` or from
+`SelectionChanged` can also result from assigning `Selection` or from
 source/eligibility reconciliation. Its immutable payload is the updated
-`TableSelection`, including when only the current row changes.
+`Selection`, including when only the current row changes.
 Every selected-item packet below is in current visual row order. Event payloads
 are immutable snapshots:
 
 | Event | Event args contract |
 |---|---|
-| `SelectionStateChanged` | `Selection`: current visual-order `Items` and `Current` |
+| `SelectionChanged` | the `Selection` itself: current visual-order `Items` and `Current` |
 | `ItemInvoked` | `Item`, ordered `SelectedItems` after normal input selection processing |
-| `RowContextRequested` | `Item`, ordered `SelectedItems`, realized row `FrameworkElement PlacementTarget`, nullable `Point RelativePoint` relative to it (`null` for a keyboard invocation) |
-| `RowsReorderRequested` | row-order `MovingItems`, nullable `InsertBeforeItem` anchor, never one of `MovingItems` |
-| `LayoutChanged` | one `TableLayoutChangeKind`: `Sort`, `ColumnMove`, `ColumnResize`, `AutoFit`, `Visibility`, or `Reset` |
+| `ItemContextRequested` | `Item`, ordered `SelectedItems`, realized row `FrameworkElement Target`, nullable `Point Position` relative to it (`null` for a keyboard invocation) |
+| `ReorderRequested` | row-order `Items`, nullable `Before` item, never one of `Items` |
+| `LayoutChanged` | one `LayoutChange`: `Sort`, `Move`, `Resize`, `Fit`, `Visibility`, or `Reset` |
 
 `LayoutChanged` carries the change kind and nothing else. A host that wants the
 snapshot reads `Layout`, which is the same independent snapshot the event used
 to carry, so there is one way to obtain it rather than two.
 
-Assigning `Layout` is silent. `InsertBeforeItem` describes a position in the
-row order *after* `MovingItems` have been removed: insert the complete packet
+Assigning `Layout` is silent. `Before` describes a position in the
+row order *after* `Items` have been removed: insert the complete packet
 immediately before that remaining item; `null` means append at the end. The
 row order is the current visual sequence, read from the bottom up when the
-`DefinesRowOrder` column is sorted descending, and `MovingItems` is in that
+`DefinesRowOrder` column is sorted descending, and `Items` is in that
 order too, so the request names the placement the user pointed at whichever
 way the view runs. The first remaining item therefore expresses the start of
 the order, and `null` expresses its end without a synthetic target or a
@@ -461,7 +454,7 @@ model outside the control.
 
 ### 5.2 MVVM consumption
 
-`TableView` follows normal WinUI control semantics: bind values into dependency
+`Table` follows normal WinUI control semantics: bind values into dependency
 properties and receive interaction requests or state changes as events. A page
 may forward an immutable event packet to its view-model command or application
 service using the MVVM mechanism it already uses. That forwarding is
@@ -470,7 +463,7 @@ adapter, or framework-specific dependency.
 
 The table is the single interactive selection/current owner. A page or shell
 only needs an ID projection when another surface—such as a command bar or
-detail pane—uses it. It observes `SelectionStateChanged` and assigns
+detail pane—uses it. It observes `SelectionChanged` and assigns
 `Selection` only when another surface changes that projection. There is
 intentionally no two-way selected-items binding: that would create a competing
 selection owner, which is why `Selection` is a plain property rather than a
@@ -537,7 +530,7 @@ assignment, `Add`, `Remove`, `Move`, `Replace`, and `Reset`—reconciles selecte
 items, current item, selection anchor, and focus to the current row instances
 by key. `Selection.Items` then exposes those new instances.
 A rehydration with the same logical selected/current identities does not raise
-`SelectionStateChanged` merely because objects or visual positions changed. An
+`SelectionChanged` merely because objects or visual positions changed. An
 anchor or focus item that no longer survives clears. Without a selector, object
 reference is identity, so a replacement object is a removal and an addition.
 Null, empty, or duplicate configured keys are a source-contract error and fail
@@ -547,19 +540,19 @@ If an update removes an item or makes it non-interactive, the table prunes the
 effective selection/current item atomically. If that removes the current item
 while selected items remain, the first retained selected item in current visual
 order becomes current; otherwise current becomes `null`. The table raises at
-most one `SelectionStateChanged` event. Source reordering and header sorting do
+most one `SelectionChanged` event. Source reordering and header sorting do
 not raise that event when the logical selected/current packet is unchanged.
 
 A source update, `RefreshView()`, or sort change during a
 row drag cancels the drag without raising
-`RowsReorderRequested`. A marquee gesture survives all three: the rectangle
+`ReorderRequested`. A marquee gesture survives all three: the rectangle
 stays where it is on screen, the rows move through it, and its coverage is
 re-asked of the new view (section 14).
 Header resize and
 column-drag gestures are data-independent and remain active.
 
 An explicit `Selection` assignment, or turning off
-`IsMarqueeSelectionEnabled`/`IsRowReorderingEnabled` during its corresponding
+`IsMarqueeEnabled`/`CanReorder` during its corresponding
 gesture, cancels that gesture before applying the new state. It never produces a
 reorder request.
 
@@ -607,7 +600,7 @@ assertion, logging, or recovery mechanism.
 ## 6. Column contract
 
 ```csharp
-public sealed class TableColumn : DependencyObject
+public sealed class Column : DependencyObject
 {
     public string? Id { get; set; }
     public string DisplayName { get; set; } = string.Empty;
@@ -631,7 +624,7 @@ public sealed class TableColumn : DependencyObject
 ```
 
 The type carries the context, so the names do not repeat it: inside a
-`TableColumn`, `Width` and `IsVisible` are the column's baseline width and
+`Column`, `Width` and `IsVisible` are the column's baseline width and
 baseline visibility, and `CellAlignment` is how its cells align.
 
 Sortability is not on this type at all. A column sorts because
@@ -640,7 +633,7 @@ the flag and the comparer that previously had to agree are one call, so the
 disagreement is no longer representable.
 
 `HeaderTemplate` is the composition point for an icon, visual label, tooltip,
-or embedded header control. `TableView` deliberately has no separate header
+or embedded header control. `Table` deliberately has no separate header
 icon, description, or renderer-metadata API; those are ordinary host content.
 Sortability and structural column definitions are setup-only. `DisplayName` is
 live presentation state: its update must reach generated headers, menus, and
@@ -676,7 +669,7 @@ Required invariants:
 - hidden columns retain their resolved position and most recent width;
 - the declaration order, `Width`, `IsVisible`, and the control's documented
   width defaults form the reset baseline; runtime layout lives only in
-  `TableLayout`.
+  `ColumnLayout`.
 
 The table validates every column definition when it captures the schema at
 `Loaded`. Missing or duplicate values are configuration errors rather than an
@@ -691,7 +684,7 @@ instances, effective widths/order/visibility, sort state, rows, selection, focus
 and active edits. Do not rebuild the schema, recreate the table, reset layout, or
 automatically refit every column to change text. Host-provided header templates
 use live localized bindings; translated presentation is never a persistence key.
-The desktop [localisation contract](../../docs/localisation.md) owns catalogues,
+The desktop [localisation contract](../../../docs/localisation.md) owns catalogues,
 language selection, fallback, and composition protection.
 
 The declared defaults are: visible, hideable, resizable, non-sortable,
@@ -753,7 +746,7 @@ Input rules:
   `INotifyPropertyChanged`.
 
 For a custom interactive control the table cannot recognize automatically, set
-`TableView.SuppressRowGestures="True"` on its root or an ancestor. It prevents
+`Table.SuppressRowGestures="True"` on its root or an ancestor. It prevents
 row selection, invocation, row-context requests, marquee initiation, and row
 dragging from that subtree without adding another policy callback. It does not
 suppress the descendant's own normal focus, keyboard, context-menu, or
@@ -810,7 +803,7 @@ chrome:
   host cell remains responsible for using equivalent accessible resources.
 
 The retained row appearance has specific exceptions awaiting the
-[hands-on Fluent review](../../docs/architecture.md#decisions-still-open): no hover
+[hands-on Fluent review](../../../docs/architecture.md#decisions-still-open): no hover
 fill, square corners for edge-to-edge rows, and section 19's neutral selection
 bar. Native row focus is also suppressed because recycling previously restored
 focus to the wrong place. Retain these choices until that review, rather than
@@ -819,7 +812,7 @@ restoring visuals mechanically. Focus suppression remains a
 against section 19; the review must establish visible keyboard location without
 reintroducing incorrect focus movement.
 
-`TableView` exposes no palette, visual-style object, font setting, token map,
+`Table` exposes no palette, visual-style object, font setting, token map,
 or menu-style API. It must not create component-specific colors, bespoke
 flyout surfaces, or visual recipes in XAML.
 
@@ -861,7 +854,7 @@ Sorting requirements:
 - while a sort is applied, the view converges on the sorted order within a
   bounded interval. Membership is never deferred; only relative position is. A
   row that arrives appears at once and a row that leaves goes at once, while
-  existing rows trade places on the settling interval. `SortSettleInterval`
+  existing rows trade places on the settling interval. `SortInterval`
   sets that interval, and `TimeSpan.Zero` restores immediate re-sorting.
 
 Avoiding automatic re-sorts on every property notification is important for
@@ -879,10 +872,10 @@ of exactly the same rows can hold its position. The rule is therefore structural
 rather than a promise — no path through the table can defer a membership change,
 rather than no path choosing to.
 
-Measured on a 2,002-row torrent list, per host publish, because with settling off
+Measured on the original host's 2,002-row list, per host publish, because with settling off
 every publish reorders and the two units are then the same one: sorted by
 download speed, every publish reordered the whole view. What the host had
-published was a single torrent finishing. The reshuffle is the reason the
+published was a single row finishing. The reshuffle is the reason the
 interval exists, and the reason it is a table concern rather than a host one is
 that no host can separate the two halves of its own snapshot.
 
@@ -910,7 +903,7 @@ interval, so the cap holds at the value it claims. The same sort with settling
 off reordered on nine publishes out of nine. Sorted by a stable key, sixteen real
 publishes produced no reorder at all. That is the claim, and it holds whatever
 the host's publish rate: one reorder per interval, against one per publish.
-These three counts came from the torrent host's own publish stream, and that
+These three counts came from the original host's own publish stream, and that
 harness has been deleted, so the eleven, the nine, and the sixteen cannot be
 reproduced as written. What survives them is the claim itself, which follows
 from how the interval is defined and not from any particular publish rate.
@@ -930,7 +923,7 @@ a real host requires it.
 
 ## 10. Column widths, resizing, and fit commands
 
-`TableView` uses fixed device-independent-pixel (DIP) column widths. Version 1
+`Table` uses fixed device-independent-pixel (DIP) column widths. Version 1
 has no star, fill, percentage, or viewport-responsive width mode. Extra space at
 the right remains table surface; when visible columns do not fit, the existing
 horizontal scroll surface is used. Resizing the host window never redistributes
@@ -942,12 +935,12 @@ does not declare one, the control's 150-DIP default is used. An unspecified
 width is not an implicit content-fit mode: initial source data, later data,
 property updates, sorting, filtering, scrolling, and visibility changes MUST
 NOT silently widen or narrow a column. This keeps a first-use layout stable and
-independent of which virtualized rows happen to appear first. `TableView` never
+independent of which virtualized rows happen to appear first. `Table` never
 invokes a fit command during initialization.
 
-An applied valid `TableLayout.Widths` entry, a completed direct
+An applied valid `ColumnLayout.Widths` entry, a completed direct
 resize, or an explicit fit creates a width override.
-It wins over the baseline until another override or `ResetColumnLayout()`
+It wins over the baseline until another override or `ResetLayout()`
 replaces it. A user may resize down to the declared `MinWidth` even when cell
 content clips or truncates; observed content never becomes a new hard minimum.
 Cell templates own their overflow policy.
@@ -962,7 +955,7 @@ a competing direct-touch resize recognizer to a dense header.
 - double-clicking the mouse/pen separator fits that column;
 - the header menu includes **Fit this column** and **Fit visible columns** when
   applicable, and offers no per-step width command;
-- `IsFitAllButtonEnabled` offers that same **Fit visible columns** command as a
+- `ShowsFitButton` offers that same **Fit visible columns** command as a
   button in the header's trailing space. It is off by default, because a table
   must not add a visible control to a host's header uninvited and a host with
   its own fit button would then show two; turning it on is not a guarantee that
@@ -977,8 +970,8 @@ this column**, each changing the width by 8 DIPs. They were removed, and the
 reason is recorded because the requirement looked like accessibility and was
 not. A menu flyout closes on every invocation and WinUI offers no way to keep
 one open for a command, so each 8 DIP step cost a full reopen: widening the
-torrent host's 150 DIP name column to something readable was thirteen
-right-clicks and thirteen clicks. That count came from the torrent host's own
+original host's 150 DIP name column to something readable was thirteen
+right-clicks and thirteen clicks. That count came from the original host's own
 fitted width, and the harness that produced it has been deleted, so the thirteen
 cannot be reproduced as written. What survives it is the arithmetic: a column at
 the 150 DIP default needs one invocation per 8 DIP, however far it has to go.
@@ -989,7 +982,7 @@ invocation, and it is two lines above in the same menu. Should continuous
 keyboard resizing be wanted, it belongs on the focused header as a held key,
 where auto-repeat does the work, and not as a menu item invoked once per step.
 
-`AutoFitColumn` and `AutoFitVisibleColumns` are explicit fit commands, not an
+`Fit(Column)` and `FitColumns()` are explicit fit commands, not an
 automatic sizing mode. A fit considers only the header and cells available to
 the current normal visual layout, includes normal padding and the sort glyph,
 and clamps the result to that column's limits. It MUST NOT enumerate source data
@@ -997,16 +990,16 @@ solely to size columns, instantiate off-screen row templates, or maintain a
 hidden measurement table. A per-column fit changes only that column; it MUST
 NOT fall back to a fit of other columns when its result is unchanged.
 
-`AutoFitVisibleColumns` fits each currently visible, resizable column independently
+`FitColumns` fits each currently visible, resizable column independently
 and produces at most one `LayoutChanged` event. Hidden columns retain their
 resolved width and are not fitted; a direct fit request for a hidden or
-non-resizable column is a no-op, while an unknown column ID is an argument
-error. A value that has not entered the current visual layout may require a
+non-resizable column is a no-op, while a column this table does not hold, or
+any column before the first `Loaded` captures the schema, is an argument error. A value that has not entered the current visual layout may require a
 later fit after scrolling. This is an intentional limitation of a virtualized
 convenience action, not a promise to discover the widest value in the source.
 
 Hiding or showing a column does not discard, recompute, or fit its width.
-`ResetColumnLayout()` discards width overrides and restores the captured
+`ResetLayout()` discards width overrides and restores the captured
 baseline widths; it does not fit the current data. A host that wants an initial
 content-based layout can deliberately invoke a fit command after its data is
 available, with the same bounded behavior and persistence semantics as a user
@@ -1112,8 +1105,8 @@ path for column order. Sort is available from the active passive header: Enter o
 Space follows section 9's sort cycle. The column entries use each column's
 localized `DisplayName`, and the commands that name a column place that name into
 a sentence their translation owns; every other label is localized by
-`TableView`'s own resources. They are not host-overridable configuration. Catalogue
-authoring and generation follow [localisation](../../docs/localisation.md#synapse).
+`Table`'s own `en.json`. They are not host-overridable configuration. Catalogue
+authoring follows [localisation](../../../docs/localisation.md#tableview).
 The control owns these generic messages without depending on product settings. This
 keeps generated UI self-contained while the host owns its column names and
 header content. Focus returns to the invoking header when the menu closes, in
@@ -1170,7 +1163,7 @@ elements and the marquee overlay are not tab stops. Interactive header
 descendants and interactive cell controls retain their own normal tab, focus,
 and input behavior rather than joining the passive-header composite.
 
-`TableView` is one content region. It does not reserve a page-level F6
+`Table` is one content region. It does not reserve a page-level F6
 shortcut; a shell that offers F6/Shift+F6 navigation between prominent regions
 owns that policy and gives this table region a localized accessible name.
 
@@ -1202,13 +1195,13 @@ section 5.3.
 
 Assigning `Selection` resolves supplied identities by key when configured,
 drops duplicate, unavailable, and non-interactive items, and applies these
-selection rules atomically. A host treats `SelectionStateChanged` as an output
+selection rules atomically. A host treats `SelectionChanged` as an output
 and assigns `Selection` only for an independent external selection/current
 action; an equal logical request is a no-op.
 
 ## 14. Marquee selection
 
-When `IsMarqueeSelectionEnabled` is true and `SelectionMode` is `Multiple` or
+When `IsMarqueeEnabled` is true and `SelectionMode` is `Multiple` or
 `Extended`, dragging from empty row-surface space with a mouse or pen creates a
 selection rectangle, and so does dragging from a row the table would not drag:
 one it withholds section 16's drag from because reordering is off, the host has
@@ -1254,7 +1247,7 @@ input; it does not begin a marquee gesture.
   following a row; a rectangle whose corner jumped with the row the panel was
   following is what the owner saw under a sort by speed;
 - the overlay disappears on completion, Escape cancellation, unload, or the
-  host withdrawing `IsMarqueeSelectionEnabled` mid-gesture; the last two
+  host withdrawing `IsMarqueeEnabled` mid-gesture; the last two
   restore the selection as it stood before the press.
 
 Empty row-surface space is below the last row and beside the last column. A row
@@ -1268,7 +1261,7 @@ columns inside a scroll container the width of the viewport, and a press in the
 space between the two starts its rectangle.
 
 The line between a row and that space MUST be visible, or the space reads as a
-drag that stopped working. Measured once on the torrent host at 2,538 wide with
+drag that stopped working. Measured once on the original host at 2,538 wide with
 1,120-wide rows: 1,418 pixels of every row band, 56%, started a rectangle
 where the user expected a drag, with nothing on screen to mark the line, and
 the line moved with every fit, resize and hidden column. That host's diagnostics
@@ -1321,25 +1314,24 @@ Row-context behavior:
 - if the row is already selected, preserve the existing multi-selection;
 - otherwise select only that row when selection is enabled;
 - in both cases make the target the current row, logical row focus, and the next
-  range-selection anchor. A current-item change raises `SelectionStateChanged`
+  range-selection anchor. A current-item change raises `SelectionChanged`
   even when the selected packet itself is unchanged;
-- raise `RowContextRequested` with the target item, an immutable selected
+- raise `ItemContextRequested` with the target item, an immutable selected
   packet, a row `FrameworkElement` placement target, and a point relative to
   that target when pointer-originated (otherwise a null relative point);
 - let the host synchronously construct and show a native `MenuFlyout` or
   `CommandBarFlyout` with domain-specific commands at that placement target.
 
-`TableView.IconFontFamily` is the icon font the control's own generated menu
-draws from, exposed so that a host building this row menu can draw from the same
-set. The family is vendored inside the control's package and addressed by a path
-into it, which a host cannot be expected to know, and the theme dictionary's key
-is not reachable from `Application.Current.Resources`.
+The control draws its own icons from the Lucide library it references. A host
+building this row menu draws from the same set through `Lucide.Font` and the
+glyph names on the `Lucide` class, rather than through a path into the library's
+package or a theme key, which `Application.Current.Resources` cannot reach.
 
 The placement target is presentation context, not durable view-model state. A
 host forwards command intent to its view model but creates/shows the flyout
 at the view boundary while that target is valid. Closing a flyout returns focus
 through normal native flyout behavior. The host owns its menu's labels,
-enablement, keyboard behavior, and accessibility; `TableView` owns only the
+enablement, keyboard behavior, and accessibility; `Table` owns only the
 selected/current mechanics and transient placement context. `SuppressRowGestures`
 and interactive cell descendants suppress the row request and retain their own
 context menus. This makes multi-selection context menus predictable for any
@@ -1350,12 +1342,12 @@ domain without giving the generic table a domain menu model.
 Row reordering is disabled by default as described in section 5. When enabled,
 it supports multi-row movement without embedding domain ordering policy.
 
-The host MUST set `IsRowReorderingEnabled` to false whenever its external
+The host MUST set `CanReorder` to false whenever its external
 filter/order cannot map a visual placement to domain ordering. The active table
 sort is the table's own to judge: it offers the drag only while the view shows
 the row order — unsorted, or sorted either way by the column whose
 `DefinesRowOrder` is true — and withholds it under any other sort, where a drag
-from a row is section 14's marquee instead. If `IsRowReorderingEnabled` becomes
+from a row is section 14's marquee instead. If `CanReorder` becomes
 false during a drag, or the sort stops showing the row order during one, the
 table cancels the drag, whether or not the rows moved. For a race or command
 failure, the host simply does not change (or reconciles) its projection;
@@ -1369,13 +1361,13 @@ there is no post-drop accept/reject protocol.
 - non-interactive display rows cannot start or join a drag packet;
 - packet order follows the current visual order;
 - an immediate, theme-aware insertion indicator identifies the legal boundary;
-- the event supplies `MovingItems` and `InsertBeforeItem` as defined in section
+- the event supplies `Items` and `Before` as defined in section
   5.1, both in row order: the visual order, or its reverse when the
   `DefinesRowOrder` column is sorted descending; it never uses a target inside
   the moving packet;
 - top, between-row, and append-after-last placements are valid. Invalid,
   packet-internal, and no-change placements are cancelled without an event;
-- `TableView` does not mutate the collection; after the event, the host may
+- `Table` does not mutate the collection; after the event, the host may
   update its own source;
 - the table returns to idle immediately after the event; the host may begin
   asynchronous domain work and reconcile its own projection;
@@ -1407,11 +1399,11 @@ domain rather than fake a pointer drop.
 The host decides whether reordering is valid under its current filter and how
 a place in the row order maps to domain ordering; the table decides it under
 the sort. Optimistic updates, remote calls, failure handling, and
-reconciliation remain outside `TableView`.
+reconciliation remain outside `Table`.
 
 ## 17. Loading and empty states
 
-`TablePlaceholder` has exactly three values: `Empty`, `Loading`, and
+`Placeholder` has exactly three values: `Empty`, `Loading`, and
 `NoResults`. The host sets it, because only the host can tell an empty
 domain source from a filter that excluded everything, or from a fetch in
 flight. There is no separate loading flag beside it: a boolean qualifying an
@@ -1446,22 +1438,22 @@ outside the table unless the host deliberately supplies them as content.
 The table exposes, but does not store, a data-only snapshot:
 
 ```csharp
-public sealed record TableLayout(
+public sealed record ColumnLayout(
     IReadOnlyList<string> Order,
     IReadOnlyDictionary<string, bool> Visibility,
     IReadOnlyDictionary<string, double> Widths,
     string? SortColumnId,
-    TableSortDirection SortDirection);
+    SortDirection SortDirection);
 ```
 
-The snapshot is read and written through one property, `TableView.Layout`.
+The snapshot is read and written through one property, `Table.Layout`.
 Reading gives an independent snapshot of the overrides; assigning restores one.
 
 The sort is persisted as a column ID and a direction rather than as the
-`TableSort` value section 5 uses at runtime, because this record has to survive
-being written to a settings store and `TableSort` names a live `TableColumn`.
+`Sort` value section 5 uses at runtime, because this record has to survive
+being written to a settings store and `Sort` names a live `Column`.
 
-`TableLayout` deliberately has no version field. Stable column IDs and
+`ColumnLayout` deliberately has no version field. Stable column IDs and
 defensive restoration are sufficient for version one; if the host later needs
 to version its stored envelope, that envelope is the version boundary.
 The only valid persisted directions for an active sort are ascending and
@@ -1516,7 +1508,7 @@ snapshot to its settings store.
 
 ## 19. Accessibility, input, theming, and motion
 
-`TableView` is a dense native list/table surface, not a new visual or
+`Table` is a dense native list/table surface, not a new visual or
 accessibility framework. The host supplies its localized control-level
 accessible name through `AutomationProperties.Name` or an explicit automation
 label relationship; a nearby visible caption alone is not that relationship.
@@ -1610,14 +1602,14 @@ throughput target.
   changes and for the positions the item surface holds a container for, and
   for nothing else (section 5.3). The number of notifications a reorder
   raises is bounded by realized containers, never by the row count. Measured
-  once, on the 2,002-row torrent host in Release, with no collection inside the
+  once, on the original host's 2,002 rows in Release, with no collection inside the
   span: a full reversal fell from 3,998 notifications to 34, and the collection
   change from 223 ms to 13 ms. Neither half can be reproduced now, and both are
   recorded rather than deleted only so the requirement's origin is readable. The
   "before" half was taken against a reconcile that announced every row it moved,
   and that implementation is gone. The "after" half was taken on that host's own
   diagnostics harness, which has been deleted; the harness that replaced it
-  (`samples/Synapse.Sample/Demo/TableDemoPage.Diagnostics.cs`) runs a different
+  (`lib/TableView/sample/Jobs/JobsPage/Diagnostics.cs`) runs a different
   feed with different columns, so it tests the same claim on a different list and
   reports its own numbers. Do not quote these four as current.
   The claim is falsifiable and MUST be tested as such —
@@ -1651,282 +1643,10 @@ throughput target.
 The component introduces no runtime dependency beyond WinUI 3. This keeps
 package size, memory use, and versioning surface small.
 
-## Appendix A — Reference integration: torrent list
-
-This appendix is informative. It describes one concrete host configuration and
-the torrent-specific behavior it must supply. It does not add requirements to
-the generic `TableView` contract.
-
-### A.1 Reference profile
-
-The torrent list uses the following columns. They are host configuration, not
-built-in `TableView` behavior.
-
-| ID | Declared initial width | Minimum | Target first-run visible | Cell content |
-|---|---:|---:|:---:|---|
-| `name` | 150 | 90 | yes | name and error indication/tooltip |
-| `progress` | 220 | 110 | yes | progress bar, percentage, transferred amount |
-| `status` | 110 | 95 | yes | localized status |
-| `queue` | 80 | component default | yes | queue position |
-| `eta` | 110 | component default | no | estimated time |
-| `speed` | 180 | 160 | yes | download and upload speed |
-| `peers` | 88 | component default | yes | connected/available peers |
-| `size` | 100 | component default | yes | total size |
-| `ratio` | 90 | component default | no | share ratio |
-| `added` | 100 | component default | no | added date |
-| `completedOn` | 110 | component default | no | completion date |
-
-The target first-run visible set is:
-
-`name`, `progress`, `status`, `queue`, `speed`, `peers`, and `size`.
-
-This is deliberate torrent-host policy, not a generic default or a claim about
-another table's startup state. Every listed initial width is explicit,
-including `name = 150`; none relies on `TableView`'s generic 150-DIP fallback. A
-`component default` minimum means the torrent profile supplies no additional
-minimum beyond the table's 48-DIP default `MinWidth`. These values are not
-generic defaults for another table.
-
-The torrent host supplies:
-
-- typed templates for all cells;
-- header templates for the localized label, existing header icon, and any
-  header tooltip or description;
-- column comparers; its incoming natural order is queue-ascending;
-- All/Downloading/Seeding domain filters and its own text filter;
-- `Placeholder` and its loading/empty/no-results content;
-- pause, resume, recheck, remove, queue, path, copy, and sequential-download
-  commands;
-- the row context menu;
-- queue-reorder validation, mutation, optimistic display, and rollback;
-- the layout-state storage key and persistence service.
-
-Bulk commands operate on the current selected packet when the context row is
-already selected. Single-row actions operate on the context row. These are
-torrent-page rules, not table APIs.
-
-### A.2 Reference data and view projection
-
-The following reference configuration keeps daemon state, queue policy,
-commands, and storage in the torrent host while `TableView` supplies table
-mechanics.
-
-#### A.2.1 Stable rows and source projection
-
-The torrent host may keep one `TorrentRowViewModel` per torrent identity and
-update its bindable properties from daemon snapshots. That is a host choice for
-smooth progress, edit, and rich-cell animation continuity; it is not a
-`TableView` requirement. The row exposes `INotifyPropertyChanged` so cells
-redraw without rebuilding rows.
-
-A host may instead publish rehydrated row instances with the same ID. The
-schema's key selector still preserves table selection/current state, but it
-cannot preserve template-local animation or edit state across the replacement.
-
-Regardless of that choice, the torrent host owns a source collection or
-projection of its current row instances. It derives semantic queue order first,
-applies a pending optimistic queue order when one exists, then applies the
-state filter and its own text filter before assigning `TableView.ItemsSource`.
-Semantic ordering, domain-state filtering, and text filtering stay outside the
-control:
-
-```text
-daemon snapshot -> current torrent row objects
-               -> authoritative or pending semantic queue order
-               -> torrent host's state- and text-filtered projection
-               -> TableView.ItemsSource -> table sort
-```
-
-Set `Placeholder` to `Empty` when the unfiltered daemon torrent collection has
-no items, `NoResults` when the state or text filter excludes all source rows,
-and `Loading` while the first snapshot is in flight.
-
-The torrent host applies these display rules:
-
-- removed IDs are omitted;
-- ghost/pending rows bypass the All/Downloading/Seeding state filter, but the
-  host's text filter matches both name and ghost label;
-- checking rows appear in both Downloading and Seeding filters;
-- ghosts are display-only: they cannot be selected, invoked, context-clicked,
-  included in bulk commands, or included in a queue-reorder packet.
-
-When a changed value affects active table order or ghost eligibility (for
-example queue position, name, size, or ratio), the torrent host batches updates
-and calls `RefreshView()` once. Fast-changing speed/progress updates normally
-redraw only; they do not force a view refresh.
-
-#### A.2.2 Columns
-
-```xml
-<controls:TableView
-    x:Name="TorrentTable"
-    ItemsSource="{x:Bind ViewModel.FilteredTorrents, Mode=OneWay}" />
-```
-
-During host setup, declare the eleven `TableColumn` definitions in the
-declared order and with the explicit initial widths in Appendix A.1, each with
-`x:Name` so the schema can name it. Put the typed XAML templates in the torrent
-host or its resource dictionary, then assign each template directly to the
-matching column. There is no torrent-specific column class or renderer registry.
-Give every definition its localized `DisplayName` for the generated header menu
-and UI Automation.
-
-Each sortable column gets its order from `Schema<TRow>().Sort`, which joins
-the column to its key through the field the XAML compiler already generated for
-`x:Name`: renaming a column is then a build break rather than a lookup that
-silently stops matching. The natural order is the torrent host's
-queue-ascending semantic source order, not an implicit torrent feature of
-`TableView`. Start with the seven intended visible columns listed in Appendix
-A.1, then assign `Layout` from the stored snapshot, if present.
-
-The torrent host therefore has exactly one mapping layer:
-
-```text
-TorrentRowViewModel + DataTemplate + a sort key -> TableColumn
-```
-
-A user resize or fit produces a width override that supersedes these torrent
-widths until reset; `ResetColumnLayout()` returns to the Appendix A.1 values.
-The inset inside every cell is the control's own `CellPadding`, applied to the
-header cell and the row cell alike, so the host repeats no cell margin and the
-header cannot drift out of line with its column.
-
-Status display calculation, formatted speeds, ETA strings, and progress labels
-belong on the torrent row view model (or its display-state owner),
-because the templates use them. `TableView` receives only the finished row
-object and template.
-
-#### A.2.3 Events and policy callbacks
-
-The torrent host wires its generic policy and event boundary in one place:
-
-```csharp
-private void ConfigureTorrentTable()
-{
-    TorrentTable.Schema<TorrentRowViewModel>()
-        .Key(row => row.Id)
-        .CanInteract(row => !row.IsGhost)
-        .Sort(QueueColumn, row => row.QueuePosition)
-        .Sort(SpeedColumn, row => row.ActiveSpeed)
-        .Sort(CompletedOnColumn, row => row.CompletedOn ?? DateTimeOffset.MaxValue);
-
-    TorrentTable.SelectionStateChanged += OnTorrentSelectionStateChanged;
-    TorrentTable.ItemInvoked += OnTorrentItemInvoked;
-    TorrentTable.RowContextRequested += OnTorrentRowContextRequested;
-    TorrentTable.RowsReorderRequested += OnTorrentRowsReorderRequested;
-    TorrentTable.LayoutChanged += OnTorrentLayoutChanged;
-}
-```
-
-The row type is stated once, so there is no cast per selector and no comparer
-adapter in the host. The marquee needs no line here: it is on by default.
-
-The handlers have exactly these responsibilities:
-
-- `OnTorrentSelectionStateChanged`: publish selected/current torrent IDs to the
-  shell. `Selection` is assigned only when an independent shell action changes
-  selection; matching IDs are an idempotent no-op.
-- `OnTorrentItemInvoked`: open the permitted docked detail/inspector action.
-- `OnTorrentRowContextRequested`: build and show the torrent `MenuFlyout`.
-- `OnTorrentRowsReorderRequested`: pass the immutable request to the queue
-  coordinator, which owns optimistic update, RPC, reconciliation, and failure.
-- `OnTorrentLayoutChanged`: read `Layout` and give that snapshot to the torrent
-  settings debouncer.
-
-Cell buttons and menu items call torrent commands directly through the row view
-model or host command service. Do not add `OnPause`, `OnResume`,
-`OnRemove`, or other torrent callbacks to `TableView`.
-
-#### A.2.4 Selection, activation, and the row menu
-
-Observe `SelectionStateChanged` and project its selected rows to the shell's
-selected torrent IDs and current/active ID for global hotkeys, bulk commands,
-and inspector/detail loading. When an independent application surface changes
-that state, resolve its IDs to current torrent rows and assign `Selection`.
-Matching logical state is a no-op, so the table remains the one interactive
-selection/current owner without a suppression guard.
-
-Handle `ItemInvoked` by opening the docked torrent detail/inspector, unless
-detail opening is disabled. Ghost rows are never invoked.
-Handle `RowContextRequested` to create the torrent `MenuFlyout` at the supplied
-placement target and its relative point when present. Ghost rows do not request
-a menu. Use the supplied selection unchanged:
-
-- Pause, Resume, Resume now, Recheck, Remove, Remove data, and queue commands
-  apply to the selected packet.
-- Open folder, Set/Locate path, Copy hash, Copy magnet, and sequential-download
-  toggle apply to the context row.
-
-The host decides command enablement from current torrent state. The generic
-table has no knowledge of any of these commands. When queue dragging is
-enabled, keep equivalent queue move commands in this menu (or another keyboard-
-accessible torrent command surface) for users who do not use pointer drag.
-
-#### A.2.5 Queue drag reordering
-
-Mark the queue column `DefinesRowOrder`, and bind `IsRowReorderingEnabled` to
-true only when the state filter is All and no text filter is active. The flag is
-off by default and is the only owner of the capability, so the torrent host
-turns it on exactly for the views it can map to queue ordering, and subscribing
-to `RowsReorderRequested` neither enables nor implies the gesture. The sort
-needs no binding: the table
-offers the drag unsorted and under a queue-column sort either way, withholds it
-under any other sort, and reports a descending view's request already in
-ascending queue order. The torrent host handles `RowsReorderRequested` as
-follows:
-
-1. Convert `MovingItems` and `InsertBeforeItem` (defined after removal of the
-   moving packet) into the daemon's queue operation(s).
-2. Immediately publish the optimistically reordered semantic source projection.
-3. Send the command through the torrent command/RPC path.
-4. Reconcile with the next daemon snapshot; roll back or show an
-   error state if the command fails.
-
-If queue moves must be serialized, set `IsRowReorderingEnabled` false while a
-request is pending and restore it after reconciliation when the view remains
-eligible.
-
-The table provides the packet, insertion anchor, feedback, and selection
-preservation. It never calculates queue priorities or talks to the daemon; the
-one order it reverses is its own view's, so that a request under a descending
-queue sort arrives in queue order.
-
-#### A.2.6 Layout persistence
-
-Use a torrent-specific settings key to load and save `TableLayout`. During
-setup:
-
-1. create the default torrent columns;
-2. load the saved data-only snapshot;
-3. assign it to `Layout`, before or after the first `Loaded`;
-4. subscribe to `LayoutChanged` and, from that handler, read `Layout` and
-   debounce persistence of the snapshot it returns.
-
-Do not save selections, filters, live status values, progress, or queue drag
-state as part of the table layout. Application preferences remain the storage
-owner; `TableView` only validates and produces the DTO.
-
-#### A.2.7 Torrent integration checklist
-
-- The Appendix A.1 columns have typed templates, localized headers, explicit
-  comparers, the listed first-run visibility, and a persisted layout key.
-- The host supplies state- and text-filtered, queue-ascending rows; it applies
-  pending queue order before those filters, and calls `RefreshView()` once
-  after a view-affecting batch.
-- Ghost/pending and checking rows follow A.2.1's display and eligibility rules;
-  the host may keep stable row objects or rehydrate by key.
-- It enables marquee selection for the torrent page, projects table
-  selection/current state to the shell, supplies its domain menus and commands,
-  and handles queue requests, persistence, loading, no-results, error, offline,
-  and permission presentation as described above.
-
-## Appendix B — Core verification checklist
+## Appendix — Core verification checklist
 
 The component is ready when these generic scenarios pass in a WinUI 3 sample or
-host integration, with validation scope set by [testing](../../docs/testing.md).
-Appendix A is historical host reference only. Verify the new product against
-the [interface](../../docs/interface.md), [engine](../../docs/engine.md), and
-testing contracts.
+host integration, with validation scope set by [testing](../../../docs/testing.md).
 
 1. Typed templates render text, progress, buttons, toggles, and custom controls
    without stealing their normal input, focus, or automation behavior.
@@ -1955,7 +1675,7 @@ testing contracts.
    state and a valid transient placement context; host menus retain their own
    commands and accessibility.
 10. In an eligible view, mouse/pen row drag sends the current-visual-order
-    packet and a valid post-removal `InsertBeforeItem` anchor without mutating
+    packet and a valid post-removal `Before` item without mutating
     the source. Invalid/no-change drops emit nothing, and the host exposes an
     equivalent keyboard/touch domain move command.
 11. Loading, empty, no-results, and refresh-with-existing-rows follow
@@ -1968,7 +1688,7 @@ testing contracts.
     changes do not rebuild or sort. View-changing updates reconcile state,
     cancel incompatible marquee or row-drag gestures, and retain live cell
     bindings.
-14. Policy callbacks are pure; `SelectionStateChanged` and the other four
+14. Policy callbacks are pure; `SelectionChanged` and the other four
     events carry their documented immutable post-mechanics state without
     invoking domain work. The component contains no domain types, commands, or
     service references.

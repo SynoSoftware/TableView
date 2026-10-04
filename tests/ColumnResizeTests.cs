@@ -1,8 +1,7 @@
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 10's direct resize. The strip's gesture is a three-step state machine in header-strip
@@ -21,8 +20,8 @@ public class ColumnResizeTests
     [TestMethod]
     public Task AResizeStartsOnlyOnASeparator() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync();
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync();
+        Header.Strip strip = Strip(table);
 
         Assert.IsFalse(BeginResizeAt(strip, 100), "the middle of a header is not a separator");
         Assert.IsTrue(BeginResizeAt(strip, FirstSeparator), "its trailing edge is");
@@ -37,7 +36,7 @@ public class ColumnResizeTests
     [TestMethod]
     public Task AColumnTheHostFixedHasNoSeparator() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(column => column.CanResize = false);
+        Table table = await LoadAsync(column => column.CanResize = false);
 
         Assert.IsFalse(BeginResizeAt(Strip(table), FirstSeparator));
     });
@@ -47,8 +46,8 @@ public class ColumnResizeTests
     [TestMethod]
     public Task TrackingMovesTheGuideAndNoWidthAtAll() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync();
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync();
+        Header.Strip strip = Strip(table);
         Func<int> events = LayoutChanges(table);
 
         BeginResizeAt(strip, FirstSeparator);
@@ -75,12 +74,12 @@ public class ColumnResizeTests
     [TestMethod]
     public Task ADragIsClampedToTheColumnsOwnLimits() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(column =>
+        Table table = await LoadAsync(column =>
         {
             column.MinWidth = 120;
             column.MaxWidth = 300;
         });
-        TableHeaderStrip strip = Strip(table);
+        Header.Strip strip = Strip(table);
 
         BeginResizeAt(strip, FirstSeparator);
 
@@ -106,8 +105,8 @@ public class ColumnResizeTests
     [TestMethod]
     public Task AResizeIsNotLimitedByTheViewportOrByTheContent() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(column => column.MinWidth = 10);
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync(column => column.MinWidth = 10);
+        Header.Strip strip = Strip(table);
 
         BeginResizeAt(strip, FirstSeparator);
         TrackResize(strip, FirstSeparator + 900);
@@ -129,8 +128,8 @@ public class ColumnResizeTests
     [TestMethod]
     public Task EscapeLeavesTheWidthTheGestureStartedFrom() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync();
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync();
+        Header.Strip strip = Strip(table);
         Func<int> events = LayoutChanges(table);
 
         BeginResizeAt(strip, FirstSeparator);
@@ -147,8 +146,8 @@ public class ColumnResizeTests
     [TestMethod]
     public Task EscapeRestoresAPreviousOverrideRatherThanTheBaseline() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync();
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync();
+        Header.Strip strip = Strip(table);
 
         BeginResizeAt(strip, FirstSeparator);
         TrackResize(strip, FirstSeparator + 100);
@@ -164,8 +163,8 @@ public class ColumnResizeTests
     [TestMethod]
     public Task AGestureThatChangedNoWidthReportsNothing() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync();
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync();
+        Header.Strip strip = Strip(table);
         Func<int> events = LayoutChanges(table);
 
         BeginResizeAt(strip, FirstSeparator);
@@ -181,8 +180,8 @@ public class ColumnResizeTests
     [TestMethod]
     public Task ACompletedResizeBecomesAPersistedOverride() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync();
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync();
+        Header.Strip strip = Strip(table);
 
         BeginResizeAt(strip, FirstSeparator);
         TrackResize(strip, FirstSeparator + 75);
@@ -193,9 +192,9 @@ public class ColumnResizeTests
 
     // ------------------------------------------------------------------ helpers
 
-    private static async Task<TableView> LoadAsync(Action<TableColumn>? configureFirst = null)
+    private static async Task<Table> LoadAsync(Action<Column>? configureFirst = null)
     {
-        TableView table = TestData.Table(
+        Table table = TestData.Table(
             TestData.Column("a", 200), TestData.Column("b", 200), TestData.Column("c", 200));
         configureFirst?.Invoke(table.Columns[0]);
 
@@ -207,40 +206,40 @@ public class ColumnResizeTests
         return table;
     }
 
-    private static Func<int> LayoutChanges(TableView table)
+    private static Func<int> LayoutChanges(Table table)
     {
         int count = 0;
         table.LayoutChanged += (_, kind) =>
         {
-            Assert.AreEqual(TableLayoutChangeKind.ColumnResize, kind);
+            Assert.AreEqual(LayoutChange.Resize, kind);
             count++;
         };
         return () => count;
     }
 
-    private static TableHeaderStrip Strip(TableView table) =>
-        SelectionHarness.Descendant<TableHeaderStrip>(table)
+    private static Header.Strip Strip(Table table) =>
+        SelectionHarness.Descendant<Header.Strip>(table)
         ?? throw new AssertFailedException("The table realized no header strip.");
 
-    // The gesture steps are private to the strip and Synapse grants no InternalsVisibleTo.
+    // The gesture steps are private to the strip and TableView grants no InternalsVisibleTo.
     // Reflection runs them without widening the control's surface for a test.
 
-    private static bool BeginResizeAt(TableHeaderStrip strip, double x) =>
+    private static bool BeginResizeAt(Header.Strip strip, double x) =>
         (bool)Invoke(strip, "BeginResizeAt", x, 1u)!;
 
-    private static void TrackResize(TableHeaderStrip strip, double x) =>
+    private static void TrackResize(Header.Strip strip, double x) =>
         Invoke(strip, "TrackResize", x);
 
-    private static void CompleteResize(TableHeaderStrip strip) => Invoke(strip, "CompleteResize");
+    private static void CompleteResize(Header.Strip strip) => Invoke(strip, "CompleteResize");
 
     /// <summary>The width the release would apply. Nothing else in the gesture changes a width.</summary>
-    private static double Preview(TableHeaderStrip strip) =>
+    private static double Preview(Header.Strip strip) =>
         (double)strip.GetType()
             .GetField("_previewWidth", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(strip)!;
 
     /// <summary>What Escape and a lost pointer capture both run.</summary>
-    private static void CancelGesture(TableHeaderStrip strip) => Invoke(strip, "CancelGesture");
+    private static void CancelGesture(Header.Strip strip) => Invoke(strip, "CancelGesture");
 
     private static object? Invoke(object target, string method, params object[] arguments) =>
         target.GetType()

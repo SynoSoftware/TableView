@@ -2,9 +2,8 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// The private view's reconcile, on its own and without a list.
@@ -21,7 +20,7 @@ namespace Synapse_Tests;
 [TestClass]
 public class ReconcileTests
 {
-    private static readonly Assembly Control = typeof(TableView).Assembly;
+    private static readonly Assembly Control = typeof(Table).Assembly;
 
     // ------------------------------------------------------------------ a reorder
 
@@ -152,8 +151,8 @@ public class ReconcileTests
 
     private static object NewView(IEnumerable<object> rows)
     {
-        Type identity = Control.GetType("Synapse.TableItemIdentity")!;
-        Type view = Control.GetType("Synapse.TableItemsView")!;
+        Type identity = Control.GetType("Syno.TableView.ItemIdentity")!;
+        Type view = Control.GetType("Syno.TableView.Body.View")!;
 
         object comparer = Activator.CreateInstance(
             identity, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,

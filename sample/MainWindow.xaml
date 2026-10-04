@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Window
-    x:Class="Synapse_Sample.MainWindow"
+    x:Class="Syno.TableViewSample.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="using:Synapse_Sample"
+    xmlns:local="using:Syno.TableViewSample"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Title="Synapse.Sample"
+    Title="Sample"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -19,7 +19,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TitleBar x:Name="AppTitleBar" Title="Synapse.Sample">
+        <TitleBar x:Name="AppTitleBar" Title="Sample">
             <TitleBar.IconSource>
                 <ImageIconSource ImageSource="Assets/AppIcon.ico" />
             </TitleBar.IconSource>

@@ -7,11 +7,10 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 using Windows.System;
 using Windows.UI.Input.Preview.Injection;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 12's keyboard path end to end: real key messages through the window, so what is proved
@@ -40,7 +39,7 @@ public class RealHeaderMenuTests
     private static Task OpenAndCloseAsync(VirtualKey key, VirtualKey? modifier) =>
         TestHost.RunAsync(async () =>
         {
-            TableView table = TestData.Table(TestData.Column("a"), TestData.Column("b"));
+            Table table = TestData.Table(TestData.Column("a"), TestData.Column("b"));
             table.Width = 700;
             table.Height = 200;
 
@@ -67,9 +66,9 @@ public class RealHeaderMenuTests
                 "closure returns focus to the invoking header");
         });
 
-    private static Control HeaderCell(TableView table, int visibleIndex)
+    private static Control HeaderCell(Table table, int visibleIndex)
     {
-        TableHeaderStrip strip = Descendants<TableHeaderStrip>(table).First();
+        Header.Strip strip = Descendants<Header.Strip>(table).First();
         Panel panel = (Panel)strip.GetType()
             .GetField("_panel", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(strip)!;
@@ -77,7 +76,7 @@ public class RealHeaderMenuTests
         return (Control)panel.Children[visibleIndex];
     }
 
-    private static MenuFlyoutItem FirstOpenMenuItem(TableView table)
+    private static MenuFlyoutItem FirstOpenMenuItem(Table table)
     {
         foreach (Popup popup in VisualTreeHelper.GetOpenPopupsForXamlRoot(table.XamlRoot))
         {

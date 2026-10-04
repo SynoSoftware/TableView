@@ -2,9 +2,8 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>One row item with a stable key, so identity reconciliation has something to reconcile.</summary>
 internal sealed class Row
@@ -31,20 +30,20 @@ internal sealed class Row
 /// </summary>
 internal sealed class SelectionHarness
 {
-    internal SelectionHarness(TableView table, ObservableCollection<Row> rows)
+    internal SelectionHarness(Table table, ObservableCollection<Row> rows)
     {
         Table = table;
         Rows = rows;
-        table.SelectionStateChanged += (_, e) =>
+        table.SelectionChanged += (_, selection) =>
         {
             Events++;
-            LastSelected = e.Selection.Items;
-            LastCurrent = e.Selection.Current;
+            LastSelected = selection.Items;
+            LastCurrent = selection.Current;
         };
         table.ItemInvoked += (_, e) => Invoked.Add(e.Item);
     }
 
-    internal TableView Table { get; }
+    internal Table Table { get; }
 
     internal ObservableCollection<Row> Rows { get; }
 
@@ -58,7 +57,7 @@ internal sealed class SelectionHarness
 
     internal static async Task<SelectionHarness> LoadAsync(
         int rowCount,
-        Action<TableView>? configure = null,
+        Action<Table>? configure = null,
         double height = 220)
     {
         ObservableCollection<Row> rows = new();
@@ -67,7 +66,7 @@ internal sealed class SelectionHarness
             rows.Add(new Row("k" + i));
         }
 
-        TableView table = TestData.Table(TestData.Column("a", 120), TestData.Column("b", 120));
+        Table table = TestData.Table(TestData.Column("a", 120), TestData.Column("b", 120));
         table.Schema<Row>().Key(row => row.Key);
         table.Width = 320;
         table.Height = height;
@@ -128,7 +127,7 @@ internal sealed class SelectionHarness
     /// <summary>Runs the table's real hit test over a real element in a realized row.</summary>
     internal string HitTest(DependencyObject source)
     {
-        MethodInfo method = typeof(TableView).GetMethod(
+        MethodInfo method = typeof(Table).GetMethod(
             "HitTest", BindingFlags.Instance | BindingFlags.NonPublic)!;
         object?[] args = { source, null };
         object result = method.Invoke(Table, args)!;
@@ -137,9 +136,9 @@ internal sealed class SelectionHarness
 
     private object? Invoke(string name, params object?[] args)
     {
-        MethodInfo method = typeof(TableView).GetMethod(
+        MethodInfo method = typeof(Table).GetMethod(
             name, BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new MissingMethodException("TableView", name);
+            ?? throw new MissingMethodException("Table", name);
         return method.Invoke(Table, args);
     }
 

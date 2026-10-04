@@ -6,17 +6,16 @@ using Microsoft.UI.Xaml.Automation.Provider;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
-using Synapse;
 using Windows.Foundation;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Reaches the parts of the control an independent verification pass has to drive, and records
 /// every measurement it takes so the run leaves an auditable trace.
 /// </summary>
 /// <remarks>
-/// Synapse grants no <c>InternalsVisibleTo</c> and the pointer gestures are private handlers taking
+/// TableView grants no <c>InternalsVisibleTo</c> and the pointer gestures are private handlers taking
 /// <c>PointerRoutedEventArgs</c>, which cannot be constructed. Reflection reaches the same methods a
 /// real pointer event would reach, one step inside the event unwrapping.
 /// </remarks>
@@ -56,6 +55,13 @@ internal static class Proof
 
     internal static void SetField(object target, string name, object? value) =>
         FindField(target.GetType(), name).SetValue(target, value);
+
+    /// <summary>
+    /// The named member of the enum a field holds. The field supplies the type, so a test never
+    /// names an internal enum, and renaming or moving that enum cannot break the lookup.
+    /// </summary>
+    internal static object Parse(object target, string field, string member) =>
+        Enum.Parse(FindField(target.GetType(), field).FieldType, member);
 
     private static MethodInfo? Find(Type type, string name)
     {

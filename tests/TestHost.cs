@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using WinRT;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Starts one WinUI application on a private UI thread for the whole test assembly and marshals
@@ -20,8 +20,8 @@ namespace Synapse_Tests;
 /// Two project settings make that possible. <c>WindowsPackageType=None</c> makes the Windows App
 /// SDK module initializer use the unpackaged bootstrapper instead of the deployment manager, which
 /// needs the package identity <c>testhost.exe</c> does not have.
-/// <c>ProjectPriFileName=resources.pri</c> puts the merged resource index where
-/// <c>ResourceLoader.GetDefaultResourceFilePath()</c> looks for it.
+/// <c>ProjectPriFileName=resources.pri</c> puts the merged resource index where the XAML runtime
+/// looks for it when it loads the control's <c>Generic.xaml</c>.
 /// </para>
 /// </remarks>
 [TestClass]
@@ -57,7 +57,7 @@ public static class TestHost
         })
         {
             IsBackground = true,
-            Name = "Synapse test UI thread",
+            Name = "TableView test UI thread",
         };
 
         thread.SetApartmentState(ApartmentState.STA);

@@ -1,4 +1,4 @@
-namespace Synapse_Sample;
+namespace Syno.TableViewSample.Board;
 
 /// <summary>
 /// One departure, as a board publishes them: a plain value with no change notification and no

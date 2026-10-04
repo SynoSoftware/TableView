@@ -1,8 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 6: "The declared defaults are: visible, hideable, resizable, non-sortable,
@@ -14,7 +13,7 @@ public class ColumnDefaultsTests
     [TestMethod]
     public Task Section6_DeclaredDefaults() => TestHost.RunAsync(() =>
     {
-        TableColumn column = new();
+        Column column = new();
 
         Assert.IsTrue(column.IsVisible, "section 6: default is visible");
         Assert.IsTrue(column.CanHide, "section 6: default is hideable");
@@ -36,7 +35,7 @@ public class ColumnDefaultsTests
     [TestMethod]
     public Task Section6_ANewColumnHasNoIdAndDoesNotSort() => TestHost.RunAsync(() =>
     {
-        TableColumn column = new();
+        Column column = new();
 
         Assert.IsNull(column.Id, "section 6: Id is optional");
         Assert.AreEqual(string.Empty, column.DisplayName);

@@ -1,6 +1,6 @@
 # TableView implementation
 
-Source map reviewed 2026-10-03. This describes the existing Synapse library and
+Source map reviewed 2026-10-03. This describes the existing TableView library and
 the reasons for its construction. The [contract](tableview-contract.md) owns
 observable behavior and the public API; this map is not a competing specification.
 The sample and tests exist. No new rendering or runtime verification was performed
@@ -10,16 +10,16 @@ for this documentation review.
 
 | Responsibility | Implementation |
 | --- | --- |
-| Public control, template lifetime, composition | [TableView](../src/Synapse/TableView.cs) and its partial files. |
-| Source subscription and coherent source capture | [TableSourceView](../src/Synapse/TableSourceView.cs). |
-| Displayed sequence and collection reconciliation | [TableItemsView](../src/Synapse/TableItemsView.cs). |
-| Effective column geometry and horizontal offset | [ResolvedLayout](../src/Synapse/ResolvedLayout.cs). |
-| Shared header and row arrangement | [TableCellsPanel](../src/Synapse/TableCellsPanel.cs). |
-| Selection, current item, anchor, and logical focus | [TableSelectionModel](../src/Synapse/TableSelectionModel.cs). |
-| Row pointer arbitration | [TableView.Input](../src/Synapse/TableView.Input.cs). |
-| Marquee geometry and row insertion feedback | [TableMarquee](../src/Synapse/TableMarquee.cs) and [TableRowDrag](../src/Synapse/TableRowDrag.cs), driven by the arbiter. |
-| Header gestures and generated menu | [TableHeaderStrip](../src/Synapse/TableHeaderStrip.cs) and [TableHeaderMenu](../src/Synapse/TableHeaderMenu.cs). |
-| Generic control text | [TableResources](../src/Synapse/TableResources.cs). |
+| Public control, template lifetime, composition | [Table](../src/Table.cs) and its parts in [Table/](../src/Table/). |
+| Source subscription and coherent source capture | [Body.Source](../src/Body/Source.cs). |
+| Displayed sequence and collection reconciliation | [Body.View](../src/Body/View.cs). |
+| Effective column geometry and horizontal offset | [ResolvedLayout](../src/ResolvedLayout.cs). |
+| Shared header and row arrangement | [CellsPanel](../src/CellsPanel.cs). |
+| Selection, current item, anchor, and logical focus | [SelectionState](../src/SelectionState.cs). |
+| Row pointer arbitration | [Table input](../src/Table/Input.cs). |
+| Marquee geometry and row insertion feedback | [Body.Marquee](../src/Body/Marquee.cs) and [Body.Drag](../src/Body/Drag.cs), driven by the arbiter. |
+| Header gestures and generated menu | [Header.Strip](../src/Header/Strip.cs) and [Header.Menu](../src/Header/Menu.cs). |
+| Generic control text | [Strings](../src/Resources/Strings.cs), reading the embedded [en.json](../src/Resources/en.json). |
 
 The source capture and displayed sequence serve different roles: one receives
 host items, the other presents the private view. Neither owns domain records or
@@ -69,18 +69,18 @@ meet the contract. It currently draws no current-row or focus cue, as recorded
 below. Earlier selected-row contrast of 1.08:1 is the reason the
 regression check exists, not a current rendering claim. Actual contrast, Narrator,
 and out-of-process automation still require relevant runtime evidence under the
-[testing policy](../../docs/testing.md).
+[testing policy](../../../docs/testing.md).
 
 ## Known localisation gap
 
 The contract requires live `DisplayName`, generated header/menu text, and
 accessibility updates without rebuilding the schema. Currently `DisplayName` is
 an ordinary CLR property without change notification; generated headers and
-automation names receive its value when built. `TableResources` uses a static
-resource loader over the library's English `.resw`. Neither provides the required
-live invalidation or shared catalogue implementation.
+automation names receive its value when built. `Strings` reads the library's
+embedded English `en.json` once. Neither provides the required live invalidation
+or language selection.
 
-Implement this once in Synapse, following [localisation](../../docs/localisation.md#synapse),
+Implement this once in TableView, following [localisation](../../../docs/localisation.md#tableview),
 before the new product relies on live switching. Retain standalone fallback and
 domain independence. Do not fork TableView, recreate the control on a language
 change, or quietly mark its existing contract complete.
@@ -90,25 +90,25 @@ change, or quietly mark its existing contract complete.
 Source review found these gaps on 2026-10-03. They are unresolved implementation
 work, not completed fixes or grounds for replacing the control.
 
-- **Source lifetime:** [TableSourceView](../src/Synapse/TableSourceView.cs) detaches
-  collection notifications only when its source changes. TableView's unload
+- **Source lifetime:** [Body.Source](../src/Body/Source.cs) detaches
+  collection notifications only when its source changes. The table's unload
   path stops its timer but leaves that subscription and `SnapshotChanged` rebuilds
   active. A longer-lived collection can retain a detached table and keep updating
   its old view. Suspend subscriptions while detached and recapture on reload at
   the existing source owner, preserving selection and control state.
-- **Automation selection:** [TableView.Selection](../src/Synapse/TableView.Selection.cs)
+- **Automation selection:** [Table.Selection](../src/Table/Selection.cs)
   restores its own selection after every unsolicited native `SelectionChanged`.
   Native UI Automation selection therefore gets undone too. Route automation
   requests to the existing selection operations; accepting arbitrary native
   selection would break the deliberate pointer arbitration.
-- **Automation exposure:** [TableHeaderCell](../src/Synapse/TableHeaderCell.cs)
-  and TableView derive from `Control` without creating automation peers. Header
+- **Automation exposure:** [Header.Cell](../src/Header/Cell.cs)
+  and Table derive from `Control` without creating automation peers. Header
   name/sort attached properties and the table's drag announcement therefore lack
   those peers. Supply the needed header actions/status and table notification
   support using [platform peers](https://learn.microsoft.com/en-us/windows/apps/design/accessibility/custom-automation-peers),
   preserving the hosted list's native automation instead of duplicating it.
-- **Keyboard location:** [Generic.xaml](../src/Synapse/Themes/Generic.xaml)
-  deliberately suppresses native row focus, while `TableRowVisual` draws neither
+- **Keyboard location:** [Generic.xaml](../src/Themes/Generic.xaml)
+  deliberately suppresses native row focus, while `Body.Row` draws neither
   focus nor current state. Ctrl+Arrow can move the keyboard location invisibly,
   conflicting with contract section 19. The suppression is a retained workaround
   for incorrect focus restoration during recycling. Resolve it in the
@@ -116,7 +116,7 @@ work, not completed fixes or grounds for replacing the control.
   preserving visible keyboard location without reintroducing focus movement to
   unrelated rows or controls. The implementation remains incomplete against the
   keyboard contract until that correction has relevant runtime evidence.
-- **RTL header navigation:** [TableHeaderStrip](../src/Synapse/TableHeaderStrip.cs)
+- **RTL header navigation:** [Header.Strip](../src/Header/Strip.cs)
   maps Left/Right to index minus/plus one without considering `FlowDirection`.
   Those keys must follow the mirrored visual order. Include them in the existing
   live-language exercise. [XAML already mirrors the coordinate frame](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.frameworkelement.flowdirection);

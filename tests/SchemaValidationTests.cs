@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 6.1. "The table validates every column definition when it captures the schema at
@@ -16,7 +15,7 @@ public class SchemaValidationTests
     [TestMethod]
     public Task Section6_1_AValidSchemaIsAccepted() => TestHost.RunAsync(async () =>
     {
-        TableView table = TestData.Table(TestData.Column("a"), TestData.Column("b"));
+        Table table = TestData.Table(TestData.Column("a"), TestData.Column("b"));
 
         await TableHarness.LoadAsync(table);
 
@@ -26,9 +25,9 @@ public class SchemaValidationTests
     [TestMethod]
     public Task Section6_1_MaxWidthPositiveInfinityIsAccepted() => TestHost.RunAsync(async () =>
     {
-        TableColumn column = TestData.Column("a");
+        Column column = TestData.Column("a");
         column.MaxWidth = double.PositiveInfinity;
-        TableView table = TestData.Table(column);
+        Table table = TestData.Table(column);
 
         await TableHarness.LoadAsync(table);
 
@@ -43,11 +42,11 @@ public class SchemaValidationTests
 
     [TestMethod]
     public Task Section6_1_EmptyIdIsRejected() =>
-        RejectedAsync(() => new[] { new TableColumn { Id = string.Empty, DisplayName = "A" } });
+        RejectedAsync(() => new[] { new Column { Id = string.Empty, DisplayName = "A" } });
 
     [TestMethod]
     public Task Section6_1_EmptyDisplayNameIsRejected() =>
-        RejectedAsync(() => new[] { new TableColumn { Id = "a", DisplayName = string.Empty } });
+        RejectedAsync(() => new[] { new Column { Id = "a", DisplayName = string.Empty } });
 
     [TestMethod]
     public Task Section6_1_ZeroDefaultWidthIsRejected() =>
@@ -92,8 +91,8 @@ public class SchemaValidationTests
     [TestMethod]
     public Task Section6_1_AColumnWithNoIdIsAccepted() => TestHost.RunAsync(async () =>
     {
-        TableView table = TestData.Table(
-            new TableColumn { DisplayName = "A" }, new TableColumn { DisplayName = "B" });
+        Table table = TestData.Table(
+            new Column { DisplayName = "A" }, new Column { DisplayName = "B" });
 
         await TableHarness.LoadAsync(table);
 
@@ -120,7 +119,7 @@ public class SchemaValidationTests
     public Task Section6_1_ATableDeclaringNoColumnsHasNoVisibleColumn() => TestHost.RunAsync(async () =>
     {
         // "at least one column remains visible" — a table declaring no columns has none.
-        TableView table = TestData.Table();
+        Table table = TestData.Table();
 
         Exception error = await TableHarness.LoadExpectingFailureAsync(table);
 
@@ -133,7 +132,7 @@ public class SchemaValidationTests
     public Task Section6_1_AddingAColumnAfterTheFirstLoadedIsAConfigurationError() =>
         TestHost.RunAsync(async () =>
         {
-            TableView table = TestData.Table(TestData.Column("a"));
+            Table table = TestData.Table(TestData.Column("a"));
             await TableHarness.LoadAsync(table);
 
             // "Changing a captured column definition ... after that point is unsupported and is a
@@ -145,7 +144,7 @@ public class SchemaValidationTests
     public Task Section6_1_RemovingAColumnAfterTheFirstLoadedIsAConfigurationError() =>
         TestHost.RunAsync(async () =>
         {
-            TableView table = TestData.Table(TestData.Column("a"), TestData.Column("b"));
+            Table table = TestData.Table(TestData.Column("a"), TestData.Column("b"));
             await TableHarness.LoadAsync(table);
 
             Expect.Throws<InvalidOperationException>(() => table.Columns.RemoveAt(1));
@@ -153,20 +152,20 @@ public class SchemaValidationTests
 
     // ------------------------------------------------------------------ helpers
 
-    private static TableColumn Column(Action<TableColumn> configure, string id = "a")
+    private static Column Column(Action<Column> configure, string id = "a")
     {
-        TableColumn column = TestData.Column(id);
+        Column column = TestData.Column(id);
         configure(column);
         return column;
     }
 
     /// <summary>
-    /// Columns are built inside the callback: <see cref="TableColumn"/> is a
+    /// Columns are built inside the callback: <see cref="Column"/> is a
     /// <c>DependencyObject</c> and can only be constructed on the UI thread.
     /// </summary>
-    private static Task RejectedAsync(Func<TableColumn[]> build) => TestHost.RunAsync(async () =>
+    private static Task RejectedAsync(Func<Column[]> build) => TestHost.RunAsync(async () =>
     {
-        TableView table = TestData.Table(build());
+        Table table = TestData.Table(build());
 
         Exception error = await TableHarness.LoadExpectingFailureAsync(table);
 

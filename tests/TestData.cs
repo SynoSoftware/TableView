@@ -1,21 +1,20 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 internal static class TestData
 {
     /// <summary>A column that satisfies every section 6.1 invariant.</summary>
-    internal static TableColumn Column(string id) => new() { Id = id, DisplayName = id.ToUpperInvariant() };
+    internal static Column Column(string id) => new() { Id = id, DisplayName = id.ToUpperInvariant() };
 
-    internal static TableColumn Column(string id, double defaultWidth) =>
+    internal static Column Column(string id, double defaultWidth) =>
         new() { Id = id, DisplayName = id.ToUpperInvariant(), Width = defaultWidth };
 
     /// <summary>A table with the given columns declared, not yet loaded.</summary>
-    internal static TableView Table(params TableColumn[] columns)
+    internal static Table Table(params Column[] columns)
     {
-        TableView table = new();
-        foreach (TableColumn column in columns)
+        Table table = new();
+        foreach (Column column in columns)
         {
             table.Columns.Add(column);
         }
@@ -23,12 +22,12 @@ internal static class TestData
         return table;
     }
 
-    internal static TableLayout Layout(
+    internal static ColumnLayout Layout(
         IReadOnlyList<string>? order = null,
         IReadOnlyDictionary<string, bool>? visibility = null,
         IReadOnlyDictionary<string, double>? widths = null,
         string? sortColumnId = null,
-        TableSortDirection direction = TableSortDirection.Ascending) =>
+        SortDirection direction = SortDirection.Ascending) =>
         new(
             order ?? Array.Empty<string>(),
             visibility ?? new Dictionary<string, bool>(),

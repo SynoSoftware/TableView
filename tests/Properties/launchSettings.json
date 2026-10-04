@@ -1,9 +1,6 @@
 {
   "profiles": {
-    "Synapse.Tests (Package)": {
-      "commandName": "MsixPackage"
-    },
-    "Synapse.Tests (Unpackaged)": {
+    "Tests (Unpackaged)": {
       "commandName": "Project"
     }
   }

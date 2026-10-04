@@ -7,13 +7,12 @@ using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 using Windows.Foundation;
 using Windows.Storage.Streams;
 using Windows.UI;
 using Windows.UI.ViewManagement;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 11's reorder rule. The rule the section exists for is the last one: a move is chosen at
@@ -28,7 +27,7 @@ public class ColumnMoveTests
     [TestMethod]
     public Task ADropOnAnotherBoundaryReordersTheVisibleColumns() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "c");
+        Table table = await LoadAsync("a", "b", "c");
         Func<int> events = LayoutChanges(table);
 
         Assert.IsTrue(MoveColumnTo(table, "a", 2), "a goes after c");
@@ -40,7 +39,7 @@ public class ColumnMoveTests
     [TestMethod]
     public Task EveryLegalBoundaryIsReachable() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "c");
+        Table table = await LoadAsync("a", "b", "c");
 
         MoveColumnTo(table, "c", 0);
         CollectionAssert.AreEqual(new[] { "c", "a", "b" }, TableHarness.Order(table), "before the first");
@@ -60,7 +59,7 @@ public class ColumnMoveTests
     [TestMethod]
     public Task AHiddenColumnKeepsItsPlaceAmongItsNeighbours() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "hidden", "c");
+        Table table = await LoadAsync("a", "b", "hidden", "c");
         table.Layout = TestData.Layout(
             visibility: new Dictionary<string, bool> { ["hidden"] = false });
 
@@ -81,7 +80,7 @@ public class ColumnMoveTests
     [TestMethod]
     public Task AMoveToTheEndDoesNotStepOverATrailingHiddenColumn() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "hidden");
+        Table table = await LoadAsync("a", "b", "hidden");
         table.Layout = TestData.Layout(
             visibility: new Dictionary<string, bool> { ["hidden"] = false });
 
@@ -95,7 +94,7 @@ public class ColumnMoveTests
     [TestMethod]
     public Task ANoOpPlacementChangesNothingAndReportsNothing() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "c");
+        Table table = await LoadAsync("a", "b", "c");
         Func<int> events = LayoutChanges(table);
 
         Assert.IsFalse(MoveColumnTo(table, "b", 1), "b is already at boundary 1");
@@ -107,7 +106,7 @@ public class ColumnMoveTests
     [TestMethod]
     public Task AHiddenColumnCannotBeMoved() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "hidden");
+        Table table = await LoadAsync("a", "b", "hidden");
         table.Layout = TestData.Layout(
             visibility: new Dictionary<string, bool> { ["hidden"] = false });
         Func<int> events = LayoutChanges(table);
@@ -124,7 +123,7 @@ public class ColumnMoveTests
     [TestMethod]
     public Task MoveLeftAndMoveRightStepOneVisiblePosition() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "c");
+        Table table = await LoadAsync("a", "b", "c");
 
         Assert.IsTrue(MoveColumnBy(table, "c", -1));
         CollectionAssert.AreEqual(new[] { "a", "c", "b" }, TableHarness.Order(table));
@@ -136,9 +135,9 @@ public class ColumnMoveTests
     [TestMethod]
     public Task MoveLeftAndMoveRightUseTheSameNeighbourAsADrag() => TestHost.RunAsync(async () =>
     {
-        TableView dragged = await LoadAsync("a", "b", "hidden", "c");
-        TableView commanded = await LoadAsync("a", "b", "hidden", "c");
-        foreach (TableView table in new[] { dragged, commanded })
+        Table dragged = await LoadAsync("a", "b", "hidden", "c");
+        Table commanded = await LoadAsync("a", "b", "hidden", "c");
+        foreach (Table table in new[] { dragged, commanded })
         {
             table.Layout = TestData.Layout(
                 visibility: new Dictionary<string, bool> { ["hidden"] = false });
@@ -155,7 +154,7 @@ public class ColumnMoveTests
     [TestMethod]
     public Task MovingPastEitherEndIsANoOp() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync("a", "b", "c");
+        Table table = await LoadAsync("a", "b", "c");
         Func<int> events = LayoutChanges(table);
 
         Assert.IsFalse(MoveColumnBy(table, "a", -1), "a is already first");
@@ -174,8 +173,8 @@ public class ColumnMoveTests
     [TestMethod]
     public Task ADropTakesTheNearerEdgeOfTheColumnUnderThePointer() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(("a", 200), ("b", 100), ("c", 100));
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync(("a", 200), ("b", 100), ("c", 100));
+        Header.Strip strip = Strip(table);
 
         Assert.AreEqual(0, BoundaryAt(strip, 0), "the far left is before the first column");
         Assert.AreEqual(0, BoundaryAt(strip, 99), "the left half of a");
@@ -188,8 +187,8 @@ public class ColumnMoveTests
     [TestMethod]
     public Task ADropFollowsTheScrolledHeader() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(("a", 200), ("b", 100), ("c", 100));
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync(("a", 200), ("b", 100), ("c", 100));
+        Header.Strip strip = Strip(table);
 
         TableHarness.SetHorizontalOffset(table, 150);
 
@@ -204,8 +203,8 @@ public class ColumnMoveTests
     [TestMethod]
     public Task BothBoundariesOfTheDraggedColumnAreItsOwnPlace() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(("a", 100), ("b", 100), ("c", 100));
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync(("a", 100), ("b", 100), ("c", 100));
+        Header.Strip strip = Strip(table);
         object b = TableHarness.ResolvedColumn(table, "b");
 
         Assert.AreEqual(1, DropBoundary(strip, 140, b), "the left half of b: the boundary before it");
@@ -223,8 +222,8 @@ public class ColumnMoveTests
     [TestMethod]
     public Task TheMarkerSitsOnTheBoundaryTheDropWouldUse() => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(("a", 200), ("b", 100), ("c", 100));
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync(("a", 200), ("b", 100), ("c", 100));
+        Header.Strip strip = Strip(table);
         FrameworkElement marker = Marker(strip);
 
         Assert.AreEqual(Visibility.Collapsed, marker.Visibility, "nothing shows until a drag");
@@ -258,7 +257,7 @@ public class ColumnMoveTests
 
     private static Task MeasureMarkerAsync(ElementTheme theme) => TestHost.RunAsync(async () =>
     {
-        TableView table = await LoadAsync(("a", 200), ("b", 200));
+        Table table = await LoadAsync(("a", 200), ("b", 200));
         table.RequestedTheme = theme;
 
         // The header's own brush is translucent, so it only composites to the colour a user sees
@@ -268,7 +267,7 @@ public class ColumnMoveTests
             : Color.FromArgb(255, 32, 32, 32));
         table.UpdateLayout();
 
-        TableHeaderStrip strip = Strip(table);
+        Header.Strip strip = Strip(table);
 
         // The first boundary. Every other one sits under a header cell's own separator line, which
         // would be measured along with the marker.
@@ -299,7 +298,7 @@ public class ColumnMoveTests
     // ------------------------------------------------------------------ reposition continuity
 
     /// <summary>
-    /// Section 19: a move must read as movement. <see cref="TableCellsPanel"/> arranges its cells
+    /// Section 19: a move must read as movement. <see cref="CellsPanel"/> arranges its cells
     /// at absolute positions and a custom panel's arrange carries no transition, so the control
     /// animates the cells whose column moved — and only those.
     /// </summary>
@@ -313,8 +312,8 @@ public class ColumnMoveTests
                 + "motion in that case.");
         }
 
-        TableView table = await LoadAsync(("a", 200), ("b", 200), ("c", 200), ("d", 200));
-        TableHeaderStrip strip = Strip(table);
+        Table table = await LoadAsync(("a", 200), ("b", 200), ("c", 200), ("d", 200));
+        Header.Strip strip = Strip(table);
 
         // a goes one place right: a and b swap, c and d stay where they are.
         Assert.IsTrue(MoveColumnTo(table, "a", 1));
@@ -348,7 +347,7 @@ public class ColumnMoveTests
         await Task.Delay(250);
         h.Table.UpdateLayout();
 
-        TableHeaderStrip strip = Strip(h.Table);
+        Header.Strip strip = Strip(h.Table);
         CollectionAssert.AreEqual(new[] { "A", "B", "C" }, HeaderLabels(strip));
 
         MoveColumnTo(h.Table, "a", 2);
@@ -377,17 +376,17 @@ public class ColumnMoveTests
     // ------------------------------------------------------------------ helpers
 
     /// <summary>What each realized header cell reads, in visible order.</summary>
-    private static string[] HeaderLabels(TableHeaderStrip strip) =>
+    private static string[] HeaderLabels(Header.Strip strip) =>
         ((Panel)Field(strip, "_panel")!).Children
         .Cast<DependencyObject>()
         .Select(cell => SelectionHarness.Descendant<TextBlock>(cell)?.Text ?? "(none)")
         .ToArray();
 
     /// <summary>How many cells each realized row panel holds.</summary>
-    private static int[] RowCellCounts(TableView table)
+    private static int[] RowCellCounts(Table table)
     {
         object header = Field(Strip(table), "_panel")!;
-        int[] counts = Descendants<TableCellsPanel>(table)
+        int[] counts = Descendants<CellsPanel>(table)
             .Where(panel => !ReferenceEquals(panel, header))
             .Select(panel => panel.Children.Count)
             .ToArray();
@@ -396,7 +395,7 @@ public class ColumnMoveTests
         return counts;
     }
 
-    private static float TranslationX(TableHeaderStrip strip, int visibleIndex) =>
+    private static float TranslationX(Header.Strip strip, int visibleIndex) =>
         TranslationX((Panel)Field(strip, "_panel")!, visibleIndex);
 
     /// <summary>
@@ -413,19 +412,19 @@ public class ColumnMoveTests
     }
 
     /// <summary>The first realized row's cells panel.</summary>
-    private static TableCellsPanel RowPanel(TableView table)
+    private static CellsPanel RowPanel(Table table)
     {
         object header = Field(Strip(table), "_panel")!;
-        return Descendants<TableCellsPanel>(table)
+        return Descendants<CellsPanel>(table)
             .First(panel => !ReferenceEquals(panel, header) && panel.Children.Count > 0);
     }
 
-    private static async Task<TableView> LoadAsync(params string[] ids) =>
+    private static async Task<Table> LoadAsync(params string[] ids) =>
         await LoadAsync(ids.Select(id => (id, 150d)).ToArray());
 
-    private static async Task<TableView> LoadAsync(params (string Id, double Width)[] columns)
+    private static async Task<Table> LoadAsync(params (string Id, double Width)[] columns)
     {
-        TableView table = TestData.Table(
+        Table table = TestData.Table(
             columns.Select(c => TestData.Column(c.Id, c.Width)).ToArray());
         table.Width = 700;
         table.Height = 200;
@@ -436,19 +435,19 @@ public class ColumnMoveTests
     }
 
     /// <summary>Starts counting <c>LayoutChanged</c> now; call the result to read the count.</summary>
-    private static Func<int> LayoutChanges(TableView table)
+    private static Func<int> LayoutChanges(Table table)
     {
         int count = 0;
         table.LayoutChanged += (_, kind) =>
         {
-            Assert.AreEqual(TableLayoutChangeKind.ColumnMove, kind);
+            Assert.AreEqual(LayoutChange.Move, kind);
             count++;
         };
         return () => count;
     }
 
-    private static TableHeaderStrip Strip(TableView table) =>
-        Descendants<TableHeaderStrip>(table).First();
+    private static Header.Strip Strip(Table table) =>
+        Descendants<Header.Strip>(table).First();
 
     private static IEnumerable<T> Descendants<T>(DependencyObject root)
         where T : DependencyObject
@@ -470,31 +469,31 @@ public class ColumnMoveTests
     }
 
     // The move operations, the resolved columns they act on, and the strip's drop arithmetic are
-    // all internal to Synapse, which grants no InternalsVisibleTo. Reflection is the only way to
+    // all internal to TableView, which grants no InternalsVisibleTo. Reflection is the only way to
     // reach them without widening the control's public surface for a test.
 
-    private static bool MoveColumnTo(TableView table, string id, int boundary) =>
+    private static bool MoveColumnTo(Table table, string id, int boundary) =>
         (bool)Invoke(table, "MoveColumnTo", TableHarness.ResolvedColumn(table, id), boundary, null!)!;
 
-    private static void SetColumnVisibility(TableView table, string id, bool visible) =>
+    private static void SetColumnVisibility(Table table, string id, bool visible) =>
         Invoke(table, "SetColumnVisibility", TableHarness.ResolvedColumn(table, id), visible);
 
-    private static bool MoveColumnBy(TableView table, string id, int step) =>
+    private static bool MoveColumnBy(Table table, string id, int step) =>
         (bool)Invoke(table, "MoveColumnBy", TableHarness.ResolvedColumn(table, id), step)!;
 
-    private static int BoundaryAt(TableHeaderStrip strip, double x) =>
+    private static int BoundaryAt(Header.Strip strip, double x) =>
         (int)Invoke(strip, "BoundaryAt", x)!;
 
-    private static int DropBoundary(TableHeaderStrip strip, double x, object dragged) =>
+    private static int DropBoundary(Header.Strip strip, double x, object dragged) =>
         (int)Invoke(strip, "DropBoundary", x, dragged)!;
 
-    private static void MoveInsertionMarker(TableHeaderStrip strip, double x) =>
+    private static void MoveInsertionMarker(Header.Strip strip, double x) =>
         Invoke(strip, "MoveInsertionMarker", x);
 
-    private static FrameworkElement Marker(TableHeaderStrip strip) =>
+    private static FrameworkElement Marker(Header.Strip strip) =>
         (FrameworkElement)Field(strip, "_marker")!;
 
-    private static double MarkerX(TableHeaderStrip strip) =>
+    private static double MarkerX(Header.Strip strip) =>
         ((TranslateTransform)Field(strip, "_markerOffset")!).X;
 
     private static object? Invoke(object target, string method, params object[] arguments) =>

@@ -3,11 +3,10 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 using Windows.Foundation;
 using Windows.UI.Input.Preview.Injection;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// The pointer arbiter driven by real mouse messages: press, threshold, release, and the deferred
@@ -78,9 +77,9 @@ public class RealPointerTests
     public Task DraggingTheSelectionRaisesOneReorderRequest() => TestHost.RunAsync(async () =>
     {
         SelectionHarness h = await SelectionHarness.LoadAsync(
-            8, configure: t => t.IsRowReorderingEnabled = true, height: 400);
-        List<TableRowsReorderRequestedEventArgs> requests = new();
-        h.Table.RowsReorderRequested += (_, e) => requests.Add(e);
+            8, configure: t => t.CanReorder = true, height: 400);
+        List<ReorderRequestedEventArgs> requests = new();
+        h.Table.ReorderRequested += (_, e) => requests.Add(e);
         Mouse mouse = await Mouse.CreateAsync(h);
 
         h.Table.Selection = new(new object[] { h[1], h[2], h[3] }, h[1]);
@@ -100,7 +99,7 @@ public class RealPointerTests
         Assert.AreEqual(0, h.Events);
         Assert.AreEqual(1, requests.Count, "the drop raised exactly one request");
         CollectionAssert.AreEqual(
-            new object[] { h[1], h[2], h[3] }, requests[0].MovingItems.ToArray());
+            new object[] { h[1], h[2], h[3] }, requests[0].Items.ToArray());
     });
 
     /// <summary>
@@ -112,8 +111,8 @@ public class RealPointerTests
     public Task DraggingDownBesideTheColumnsSweeps() => TestHost.RunAsync(async () =>
     {
         SelectionHarness h = await SelectionHarness.LoadAsync(8, height: 400);
-        List<TableRowsReorderRequestedEventArgs> requests = new();
-        h.Table.RowsReorderRequested += (_, e) => requests.Add(e);
+        List<ReorderRequestedEventArgs> requests = new();
+        h.Table.ReorderRequested += (_, e) => requests.Add(e);
         Mouse mouse = await Mouse.CreateAsync(h);
 
         double rowHeight = ((FrameworkElement)h.HostedList().ContainerFromItem(h[0])).ActualHeight;
@@ -141,8 +140,8 @@ public class RealPointerTests
     {
         // Both defaults, stated rather than set: the marquee is on and reordering is off.
         SelectionHarness h = await SelectionHarness.LoadAsync(8, height: 400);
-        List<TableRowsReorderRequestedEventArgs> requests = new();
-        h.Table.RowsReorderRequested += (_, e) => requests.Add(e);
+        List<ReorderRequestedEventArgs> requests = new();
+        h.Table.ReorderRequested += (_, e) => requests.Add(e);
         Mouse mouse = await Mouse.CreateAsync(h);
 
         double rowHeight = ((FrameworkElement)h.HostedList().ContainerFromItem(h[0])).ActualHeight;
@@ -209,7 +208,7 @@ public class RealPointerTests
                     // Win32 swallows the click that activates an inactive window, so spend one
                     // here rather than losing a test's first gesture to it.
                     await mouse.ClickRowAsync(h, 0);
-                    h.Table.Selection = TableSelection.Empty;
+                    h.Table.Selection = Selection.Empty;
                     h.Events = 0;
                     return mouse;
                 }

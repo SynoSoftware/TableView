@@ -1,19 +1,4 @@
-namespace Synapse;
-
-/// <summary>
-/// What changed about the resolved layout, in increasing order of what a subscriber has to redo.
-/// </summary>
-internal enum LayoutInvalidationReason
-{
-    /// <summary>Only <see cref="ResolvedLayout.HorizontalOffset"/> moved. Arrange is enough.</summary>
-    Offset,
-
-    /// <summary>The same visible columns at new widths. Measure is stale; the cells are not.</summary>
-    Widths,
-
-    /// <summary>The visible set or its order changed. Children and measure are both stale.</summary>
-    Columns,
-}
+namespace Syno.TableView;
 
 /// <summary>
 /// One column's resolved state. Width and visibility are baseline plus an optional override so
@@ -21,13 +6,13 @@ internal enum LayoutInvalidationReason
 /// </summary>
 internal sealed class ResolvedColumn
 {
-    internal ResolvedColumn(TableColumn column)
+    internal ResolvedColumn(Column column)
     {
         Column = column;
         BaselineWidth = Clamp(column.Width, column.MinWidth, column.MaxWidth);
     }
 
-    internal TableColumn Column { get; }
+    internal Column Column { get; }
 
     /// <summary>The persistence key, or null for a column the host does not persist.</summary>
     internal string? Id => Column.Id;
@@ -134,7 +119,7 @@ internal sealed class ResolvedLayout
     /// The resolved column for this definition, or null when the table did not declare it. By
     /// reference, so it answers for a column the host chose not to give a persistence key.
     /// </summary>
-    internal ResolvedColumn? Find(TableColumn declared)
+    internal ResolvedColumn? Find(Column declared)
     {
         foreach (ResolvedColumn column in _order)
         {

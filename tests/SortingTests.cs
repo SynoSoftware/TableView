@@ -5,9 +5,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>One row with a stable key and a sort rank, so equal values can be told apart.</summary>
 internal sealed class SortRow
@@ -57,13 +56,13 @@ public class SortingTests
 
         h.Activate(0);
         h.Activate(0);
-        Assert.AreEqual(TableSortDirection.Descending, h.Table.Layout.SortDirection);
+        Assert.AreEqual(SortDirection.Descending, h.Table.Layout.SortDirection);
 
         h.Activate(1);
 
-        TableLayout state = h.Table.Layout;
+        ColumnLayout state = h.Table.Layout;
         Assert.AreEqual("b", state.SortColumnId);
-        Assert.AreEqual(TableSortDirection.Ascending, state.SortDirection);
+        Assert.AreEqual(SortDirection.Ascending, state.SortDirection);
     });
 
     [TestMethod]
@@ -114,15 +113,15 @@ public class SortingTests
     public Task Section18_OneLayoutChangedOfKindSortPerCompletedSort() => TestHost.RunAsync(async () =>
     {
         SortHarness h = await SortHarness.LoadAsync(new[] { 3, 1, 2 });
-        List<TableLayoutChangeKind> raised = new();
+        List<LayoutChange> raised = new();
         h.Table.LayoutChanged += (_, kind) => raised.Add(kind);
 
         h.Activate(0);
 
         Assert.AreEqual(1, raised.Count);
-        Assert.AreEqual(TableLayoutChangeKind.Sort, raised[0]);
+        Assert.AreEqual(LayoutChange.Sort, raised[0]);
         Assert.AreEqual("a", h.Table.Layout.SortColumnId);
-        Assert.AreEqual(TableSortDirection.Ascending, h.Table.Layout.SortDirection);
+        Assert.AreEqual(SortDirection.Ascending, h.Table.Layout.SortDirection);
 
         h.Activate(0);
         h.Activate(0);
@@ -143,11 +142,11 @@ public class SortingTests
         h.Table.Layout = TestData.Layout(
             order: new[] { "a", "b", "c" },
             sortColumnId: "a",
-            direction: TableSortDirection.Descending);
+            direction: SortDirection.Descending);
 
         CollectionAssert.AreEqual(new[] { "k0", "k2", "k1" }, h.ViewKeys());
         Assert.AreEqual(0, events, "restoration is silent");
-        Assert.AreEqual(TableSortDirection.Descending, h.Table.Layout.SortDirection);
+        Assert.AreEqual(SortDirection.Descending, h.Table.Layout.SortDirection);
     });
 
     [TestMethod]
@@ -194,7 +193,7 @@ public class SortingTests
         SortHarness h = await SortHarness.LoadAsync(new[] { 3, 1, 2 });
 
         h.Table.Layout = TestData.Layout(
-            order: new[] { "a" }, sortColumnId: "a", direction: (TableSortDirection)7);
+            order: new[] { "a" }, sortColumnId: "a", direction: (SortDirection)7);
 
         CollectionAssert.AreEqual(new[] { "k0", "k1", "k2" }, h.ViewKeys());
         Assert.IsNull(h.Table.Layout.SortColumnId);
@@ -213,9 +212,9 @@ public class SortingTests
 
     /// <summary>
     /// Settling is off here, and that is the point rather than a convenience. What
-    /// <see cref="TableView.RefreshView"/> promises is that it re-reads the snapshot and applies
+    /// <see cref="Table.RefreshView"/> promises is that it re-reads the snapshot and applies
     /// the sort without re-enumerating the source; when rows are allowed to trade places is
-    /// <see cref="TableView.SortSettleInterval"/>'s separate question, and it has its own tests. At
+    /// <see cref="Table.SortInterval"/>'s separate question, and it has its own tests. At
     /// the default three seconds this refresh lands inside the window that has just been taken by
     /// the header activation above, so the view would hold its order and prove nothing either way.
     /// </summary>
@@ -224,7 +223,7 @@ public class SortingTests
         TestHost.RunAsync(async () =>
         {
             SortHarness h = await SortHarness.LoadAsync(
-                new[] { 3, 1, 2 }, configure: table => table.SortSettleInterval = TimeSpan.Zero);
+                new[] { 3, 1, 2 }, configure: table => table.SortInterval = TimeSpan.Zero);
             h.Activate(0);
             CollectionAssert.AreEqual(new[] { "k1", "k2", "k0" }, h.ViewKeys());
 
@@ -256,7 +255,7 @@ public class SortingTests
     {
         SortHarness h = await SortHarness.LoadAsync(new[] { 3, 1, 2, 1, 3, 2 });
         int selectionEvents = 0;
-        h.Table.SelectionStateChanged += (_, _) => selectionEvents++;
+        h.Table.SelectionChanged += (_, _) => selectionEvents++;
 
         h.Table.Selection = new(new object[] { h.Rows[0], h.Rows[4] }, h.Rows[4]);
         selectionEvents = 0;
@@ -399,22 +398,22 @@ public class SortingTests
 /// </summary>
 internal sealed class SortHarness
 {
-    private SortHarness(TableView table, ObservableCollection<SortRow> rows, TableHeaderStrip strip)
+    private SortHarness(Table table, ObservableCollection<SortRow> rows, Header.Strip strip)
     {
         Table = table;
         Rows = rows;
         Strip = strip;
     }
 
-    internal TableView Table { get; }
+    internal Table Table { get; }
 
     internal ObservableCollection<SortRow> Rows { get; }
 
-    internal TableHeaderStrip Strip { get; }
+    internal Header.Strip Strip { get; }
 
     /// <summary>Ranks in source order become rows k0..kN, with column "a" sorting on the rank.</summary>
     internal static async Task<SortHarness> LoadAsync(
-        int[] ranks, int sortableColumns = 1, Action<TableView>? configure = null)
+        int[] ranks, int sortableColumns = 1, Action<Table>? configure = null)
     {
         ObservableCollection<SortRow> rows = new();
         for (int i = 0; i < ranks.Length; i++)
@@ -422,10 +421,10 @@ internal sealed class SortHarness
             rows.Add(new SortRow("k" + i, ranks[i]));
         }
 
-        TableView table = TestData.Table(
+        Table table = TestData.Table(
             TestData.Column("a", 200), TestData.Column("b", 200), TestData.Column("c", 200));
 
-        TableSchema<SortRow> schema = table.Schema<SortRow>().Key(row => row.Key);
+        Schema<SortRow> schema = table.Schema<SortRow>().Key(row => row.Key);
         for (int i = 0; i < sortableColumns; i++)
         {
             schema.Sort(table.Columns[i], row => row.Rank);
@@ -439,13 +438,13 @@ internal sealed class SortHarness
         await TableHarness.LoadAsync(table);
         table.UpdateLayout();
 
-        return new SortHarness(table, rows, SelectionHarness.Descendant<TableHeaderStrip>(table)!);
+        return new SortHarness(table, rows, SelectionHarness.Descendant<Header.Strip>(table)!);
     }
 
     /// <summary>Run the header's sort cycle for the header at this visible index.</summary>
     internal void Activate(int visibleIndex)
     {
-        MethodInfo method = typeof(TableHeaderStrip).GetMethod(
+        MethodInfo method = typeof(Header.Strip).GetMethod(
             "ActivateSortFrom", BindingFlags.Instance | BindingFlags.NonPublic)!;
         method.Invoke(Strip, new object?[] { Cell(visibleIndex) });
         Table.UpdateLayout();
@@ -459,14 +458,14 @@ internal sealed class SortHarness
     internal string[] ViewKeys() =>
         ((IEnumerable)HostedList().ItemsSource).Cast<SortRow>().Select(r => r.Key).ToArray();
 
-    internal TableHeaderCell Cell(int visibleIndex) =>
-        (TableHeaderCell)Panel().Children[visibleIndex];
+    internal Header.Cell Cell(int visibleIndex) =>
+        (Header.Cell)Panel().Children[visibleIndex];
 
     internal FontIcon Glyph(int visibleIndex) =>
         SelectionHarness.Descendant<FontIcon>(Cell(visibleIndex))
         ?? throw new InvalidOperationException("The header cell has no sort glyph.");
 
-    private Panel Panel() => (Panel)typeof(TableHeaderStrip)
+    private Panel Panel() => (Panel)typeof(Header.Strip)
         .GetField("_panel", BindingFlags.Instance | BindingFlags.NonPublic)!
         .GetValue(Strip)!;
 }

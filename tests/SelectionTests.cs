@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Sections 5, 5.3 and 13: the table-owned selection set, current item, anchor, the four mode

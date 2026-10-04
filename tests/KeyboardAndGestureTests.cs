@@ -2,9 +2,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 13's keyboard set and section 7's input rules: which surface owns a key or a pointer
@@ -16,12 +15,12 @@ public class KeyboardAndGestureTests
     private const string CellXaml = """
         <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                      xmlns:s="using:Synapse">
+                      xmlns:s="using:Syno.TableView">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="passive" />
                 <Button Content="go" />
                 <TextBox Width="40" />
-                <Border s:TableView.SuppressRowGestures="True" Width="20" Height="10">
+                <Border s:Table.SuppressRowGestures="True" Width="20" Height="10">
                     <Rectangle Width="10" Height="10" />
                 </Border>
             </StackPanel>

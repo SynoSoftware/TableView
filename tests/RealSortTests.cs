@@ -5,9 +5,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Windows.System;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 9 through real input: mouse messages through the window and real key messages to a
@@ -25,7 +24,7 @@ public class RealSortTests
     {
         ObservableCollection<SortRow> rows = Rows(3, 1, 2, 1);
         DragHarness h = await DragHarness.LoadAsync(table => Configure(table, rows));
-        List<TableLayoutChangeKind> kinds = new();
+        List<LayoutChange> kinds = new();
         h.Table.LayoutChanged += (_, kind) => kinds.Add(kind);
 
         await h.MoveAsync(100);
@@ -41,7 +40,7 @@ public class RealSortTests
 
         CollectionAssert.AreEqual(new[] { "k0", "k1", "k2", "k3" }, ViewKeys(h.Table));
         CollectionAssert.AreEqual(
-            new[] { TableLayoutChangeKind.Sort, TableLayoutChangeKind.Sort, TableLayoutChangeKind.Sort },
+            new[] { LayoutChange.Sort, LayoutChange.Sort, LayoutChange.Sort },
             kinds);
     });
 
@@ -112,7 +111,7 @@ public class RealSortTests
 
         h.Table.Selection = new(new object[] { rows[0], rows[3] }, rows[3]);
         int selectionEvents = 0;
-        h.Table.SelectionStateChanged += (_, _) => selectionEvents++;
+        h.Table.SelectionChanged += (_, _) => selectionEvents++;
 
         await h.MoveAsync(100);
         await ClickAsync(h, 100);
@@ -146,7 +145,7 @@ public class RealSortTests
     }
 
     /// <summary>Column "a" sorts on the rank; "b" and "c" do not sort at all.</summary>
-    private static void Configure(TableView table, ObservableCollection<SortRow> rows)
+    private static void Configure(Table table, ObservableCollection<SortRow> rows)
     {
         table.Schema<SortRow>()
             .Key(row => row.Key)
@@ -162,15 +161,15 @@ public class RealSortTests
         h.Table.UpdateLayout();
     }
 
-    private static string[] ViewKeys(TableView table) =>
+    private static string[] ViewKeys(Table table) =>
         ((IEnumerable)SelectionHarness.Descendant<ListView>(table)!.ItemsSource)
         .Cast<SortRow>()
         .Select(r => r.Key)
         .ToArray();
 
-    private static Control HeaderCell(TableHeaderStrip strip, int visibleIndex)
+    private static Control HeaderCell(Header.Strip strip, int visibleIndex)
     {
-        Panel panel = (Panel)typeof(TableHeaderStrip)
+        Panel panel = (Panel)typeof(Header.Strip)
             .GetField("_panel", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(strip)!;
         return (Control)panel.Children[visibleIndex];

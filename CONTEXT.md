@@ -1,14 +1,15 @@
 # Table vocabulary
 
-Domain-neutral terms for Synapse. Observable requirements belong to the
+Domain-neutral terms for TableView. Observable requirements belong to the
 [TableView contract](docs/tableview-contract.md); implementation choices belong
 to the [implementation map](docs/tableview-implementation.md).
 
 ## Control and host
 
-**TableView**: a reusable control for large, changing collections with rich cells.
+**TableView**: a reusable library for large, changing collections with rich cells.
+Its control is the `Table` type in the `Syno.TableView` namespace.
 
-**Host**: the page or application that supplies rows and configures a TableView.
+**Host**: the page or application that supplies rows and configures a table.
 _Avoid_: consumer when naming the same role.
 
 **Schema**: the structural definition of row identity, columns, and interaction

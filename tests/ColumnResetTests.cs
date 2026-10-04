@@ -1,8 +1,7 @@
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Synapse;
 
-namespace Synapse_Tests;
+namespace Syno.TableView.Tests;
 
 /// <summary>
 /// Section 5 and section 10's reset, and the claim every column operation has to keep: a column
@@ -21,7 +20,7 @@ public class ColumnResetTests
         SetColumnWidth(h.Table, "a", 320);
         SetColumnWidth(h.Table, "b", 192);
 
-        h.Table.ResetColumnLayout();
+        h.Table.ResetLayout();
 
         Assert.AreEqual(200d, TableHarness.ResolvedWidth(h.Table, "a"));
         Assert.AreEqual(200d, TableHarness.ResolvedWidth(h.Table, "b"));
@@ -38,7 +37,7 @@ public class ColumnResetTests
         CollectionAssert.AreEqual(new[] { "b", "c", "a" }, TableHarness.Order(h.Table));
         Assert.IsFalse(TableHarness.IsVisible(h.Table, "b"));
 
-        h.Table.ResetColumnLayout();
+        h.Table.ResetLayout();
 
         CollectionAssert.AreEqual(new[] { "a", "b", "c" }, TableHarness.Order(h.Table));
         Assert.IsTrue(TableHarness.IsVisible(h.Table, "b"));
@@ -53,7 +52,7 @@ public class ColumnResetTests
         h.Activate(0);
         CollectionAssert.AreEqual(new[] { "k1", "k2", "k0" }, h.ViewKeys());
 
-        h.Table.ResetColumnLayout();
+        h.Table.ResetLayout();
         h.Table.UpdateLayout();
 
         CollectionAssert.AreEqual(new[] { "k0", "k1", "k2" }, h.ViewKeys(), "natural order returns");
@@ -67,10 +66,10 @@ public class ColumnResetTests
     public Task AResetRestoresTheBaselineWidthRatherThanFittingTheData() => TestHost.RunAsync(async () =>
     {
         SortHarness h = await SortHarness.LoadAsync(new[] { 1, 2, 3 });
-        h.Table.AutoFitColumn("a");
+        h.Table.Fit(h.Table.Columns.Single(c => c.Id == "a"));
         Assert.AreNotEqual(200d, TableHarness.ResolvedWidth(h.Table, "a"), "the fit moved the width");
 
-        h.Table.ResetColumnLayout();
+        h.Table.ResetLayout();
 
         Assert.AreEqual(200d, TableHarness.ResolvedWidth(h.Table, "a"));
     });
@@ -87,17 +86,17 @@ public class ColumnResetTests
         h.Activate(0);
 
         int events = 0;
-        TableLayoutChangeKind reported = TableLayoutChangeKind.Sort;
+        LayoutChange reported = LayoutChange.Sort;
         h.Table.LayoutChanged += (_, kind) =>
         {
             reported = kind;
             events++;
         };
 
-        h.Table.ResetColumnLayout();
+        h.Table.ResetLayout();
 
         Assert.AreEqual(1, events, "four overrides went, one notification came back");
-        Assert.AreEqual(TableLayoutChangeKind.Reset, reported);
+        Assert.AreEqual(LayoutChange.Reset, reported);
     });
 
     [TestMethod]
@@ -107,7 +106,7 @@ public class ColumnResetTests
         int events = 0;
         h.Table.LayoutChanged += (_, _) => events++;
 
-        h.Table.ResetColumnLayout();
+        h.Table.ResetLayout();
 
         Assert.AreEqual(0, events, "there was nothing to discard");
     });
@@ -127,17 +126,17 @@ public class ColumnResetTests
         h.Table.UpdateLayout();
 
         int selectionEvents = 0;
-        h.Table.SelectionStateChanged += (_, _) => selectionEvents++;
+        h.Table.SelectionChanged += (_, _) => selectionEvents++;
 
         (string Name, Action Run)[] operations =
         {
             ("resize", () => SetColumnWidth(h.Table, "a", 320)),
-            ("fit", () => h.Table.AutoFitColumn("b")),
-            ("fit visible", h.Table.AutoFitVisibleColumns),
+            ("fit", () => h.Table.Fit(h.Table.Columns.Single(c => c.Id == "b"))),
+            ("fit visible", h.Table.FitColumns),
             ("hide", () => SetColumnVisibility(h.Table, "b", false)),
             ("show", () => SetColumnVisibility(h.Table, "b", true)),
             ("move", () => MoveColumnTo(h.Table, "a", 2)),
-            ("reset", h.Table.ResetColumnLayout),
+            ("reset", h.Table.ResetLayout),
         };
 
         foreach ((string name, Action run) in operations)
@@ -160,16 +159,16 @@ public class ColumnResetTests
 
     // ------------------------------------------------------------------ helpers
 
-    // The resolved columns and the operations that act on them are internal to Synapse, which
+    // The resolved columns and the operations that act on them are internal to TableView, which
     // grants no InternalsVisibleTo. Reflection reaches them without widening the public surface.
 
-    private static void SetColumnWidth(TableView table, string id, double width) =>
+    private static void SetColumnWidth(Table table, string id, double width) =>
         Invoke(table, "SetColumnWidth", TableHarness.ResolvedColumn(table, id), width);
 
-    private static void SetColumnVisibility(TableView table, string id, bool visible) =>
+    private static void SetColumnVisibility(Table table, string id, bool visible) =>
         Invoke(table, "SetColumnVisibility", TableHarness.ResolvedColumn(table, id), visible);
 
-    private static void MoveColumnTo(TableView table, string id, int boundary) =>
+    private static void MoveColumnTo(Table table, string id, int boundary) =>
         Invoke(table, "MoveColumnTo", TableHarness.ResolvedColumn(table, id), boundary, null!);
 
     private static object? Invoke(object target, string method, params object[] arguments) =>
