@@ -94,7 +94,6 @@ public sealed partial class ProbePage : Page
         {
             Path.Combine(AppContext.BaseDirectory, "probe-results.txt"),
             Path.Combine(Path.GetTempPath(), "probe-results.txt"),
-            @"C:\SynoSoftware\TinyTorrent\winui3\probe-results.txt",
         };
         var text = _log.ToString();
         foreach (var t in targets)

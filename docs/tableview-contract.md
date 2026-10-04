@@ -1,10 +1,18 @@
-# TableView — WinUI 3 Data Table Design Specification
+# TableView contract
 
 - Status: component design specification
 - Scope: version 1
 - Audience: engineers building dense, interactive WinUI 3 data lists
 - Normative content: sections 1–20 and Appendix B; Appendix A is reference
   material
+
+This is the reusable control's behavior and public API authority. The
+[implementation map](tableview-implementation.md) records the existing code and
+known gaps; the contract does not claim that every requirement is implemented.
+[Product architecture](../../docs/architecture.md) owns application scope, and
+[testing](../../docs/testing.md) owns validation scope. Appendix A describes an
+earlier torrent host; its transport, optimistic state, and domain model are not
+requirements for the new libtorrent application.
 
 `TableView` is a reusable WinUI 3 control for large, changing collections whose
 cells need arbitrary XAML content. It combines native collection virtualization
@@ -113,7 +121,7 @@ a finding to raise, not a thing to delete.
   workflows;
 - RPC, polling, remote search, optimistic domain updates, or storage;
 - page chrome, host-specific embedded modes, or outer page layout;
-- a consumer's localization resources or theme-token system.
+- a host's localization resources or theme-token system.
 
 Those concerns belong to the host. `TableView` owns presentation and interaction
 mechanics only.
@@ -166,17 +174,7 @@ integrate.
 
 ### Terms
 
-| Term | Meaning |
-|---|---|
-| host / consumer | The page, view, or application component that configures `TableView`. |
-| source snapshot | One coherent enumeration of `ItemsSource`, after host filtering and semantic ordering. |
-| base sequence | The source snapshot in its enumeration order. |
-| private view | The table's non-mutating display projection over the base sequence. |
-| natural order | The base sequence order; it is the order before header sorting. |
-| baseline layout | Immutable column defaults declared by the host, plus the control's documented defaults. |
-| baseline width | A column's declared `Width`, or the control's generic width when none is declared, after its bounds are applied. |
-| width override | A user resize, explicit fit, or valid applied layout width that takes precedence over the baseline width. |
-| effective layout | User-adjusted order, visibility, width overrides, and active sort resolved against the baseline layout. |
+The [table glossary](../CONTEXT.md) defines the vocabulary used here.
 
 ### Data flow
 
@@ -203,7 +201,7 @@ host source + columns
 - generation and validation of a serializable layout snapshot;
 - loading, empty, and no-results presentation selection.
 
-### The consumer owns
+### The host owns
 
 - row objects, their lifetime, and domain-content reconciliation of external
   data updates;
@@ -580,7 +578,7 @@ optimistic rollback, and update deferral remain host policy.
 
 ### 5.4 Invalid conditions and failure boundaries
 
-The control distinguishes four cases so that a consumer does not have to infer
+The control distinguishes four cases so that a host does not have to infer
 meaning from a missing update:
 
 - **Configuration error.** A malformed captured schema or policy contract—for
@@ -593,8 +591,8 @@ meaning from a missing update:
   a resize target is non-resizable, or a drop has no legal insertion boundary.
   The table cancels or ignores that interaction, changes no
   layout/source/selection state, and emits no domain request.
-- **Consumer callback or handler failure.** A policy callback that throws or
-  returns a contract-invalid value is a consumer defect; the originating view
+- **Host callback or handler failure.** A policy callback that throws or
+  returns a contract-invalid value is a host defect; the originating view
   or interaction does not apply a partial table state. Event delivery is
   post-mechanics: the table neither interprets a handler's outcome nor rolls
   back host work. In particular, a reorder request is never accepted merely
@@ -671,7 +669,7 @@ Required invariants:
   all does not satisfy;
 - `CanHide == false` prevents hiding that column;
 - a column is sortable exactly when the schema gave it a sort key, and that key
-  is pure and defines a consistent total ordering for the consumer's rows;
+  is pure and defines a consistent total ordering for the host's rows;
 - at most one column has `DefinesRowOrder`; its ascending values are the host's
   row order, the order the unsorted view shows and a row drag changes (section
   16);
@@ -715,7 +713,7 @@ A cell template can contain any normal WinUI content, including:
 - `ProgressBar` with labels;
 - `Button`, `ToggleButton`, or command surfaces;
 - `CheckBox`, `ToggleSwitch`, `ComboBox`, or `TextBox`;
-- a consumer-defined `UserControl`;
+- a host-defined `UserControl`;
 - tooltips and accessibility descriptions.
 
 Example:
@@ -732,14 +730,14 @@ Example:
 ```
 
 The example deliberately does not prescribe a table-local spacing, font, or
-color treatment. A consumer uses the application's existing layout resources
+color treatment. A host uses the application's existing layout resources
 and standard-control styling for its own cell composition.
 
 The table MUST NOT convert rich templates into text values or take over their
 domain visual styling. It owns the outer row container and its selected,
 current, hover, focus, unavailable, and drag states; a cell template supplies
 content inside that state rather than duplicating or masking it. This keeps the
-table's native interaction feedback coherent while letting a consumer use
+table's native interaction feedback coherent while letting a host use
 normal app controls and templates in a cell.
 
 Input rules:
@@ -751,7 +749,7 @@ Input rules:
 - table keyboard shortcuts apply only from the passive row/header surface and
   MUST ignore text-editing controls;
 - clicking passive cell content follows normal row-selection behavior;
-- a consumer can update cell values through normal binding and
+- a host can update cell values through normal binding and
   `INotifyPropertyChanged`.
 
 For a custom interactive control the table cannot recognize automatically, set
@@ -784,7 +782,7 @@ table-owned header actions available.
 Text overflow is intentional. A generated textual header keeps a stable
 one-line header treatment, trims its visible label when necessary, and exposes
 the full localized DisplayName through its native accessible name and tooltip.
-A consumer header or cell template deliberately chooses wrapping, trimming, or
+A host header or cell template deliberately chooses wrapping, trimming, or
 clipping for its content and declares a sufficient MinWidth when it contains a
 control or essential value that must remain directly usable. The table does not
 make a rich cell reachable merely by shrinking it below its usable width.
@@ -809,7 +807,17 @@ chrome:
 - let the native row container express hover, selection, current, and focus.
   Cell templates must not replace these with a competing row backdrop;
 - adapt when Light, Dark, or High Contrast changes at runtime. A custom
-  consumer cell remains responsible for using equivalent accessible resources.
+  host cell remains responsible for using equivalent accessible resources.
+
+The retained row appearance has specific exceptions awaiting the
+[hands-on Fluent review](../../docs/architecture.md#decisions-still-open): no hover
+fill, square corners for edge-to-edge rows, and section 19's neutral selection
+bar. Native row focus is also suppressed because recycling previously restored
+focus to the wrong place. Retain these choices until that review, rather than
+restoring visuals mechanically. Focus suppression remains a
+[known accessibility gap](tableview-implementation.md#other-known-integration-gaps)
+against section 19; the review must establish visible keyboard location without
+reintroducing incorrect focus movement.
 
 `TableView` exposes no palette, visual-style object, font setting, token map,
 or menu-style API. It must not create component-specific colors, bespoke
@@ -837,7 +845,7 @@ Sorting requirements:
 - sorting creates a private view; it does not reorder `ItemsSource`;
 - sorting is stable;
 - equal values retain the exact current base-sequence order;
-- null placement is defined by the consumer comparer;
+- null placement is defined by the host comparer;
 - natural order means the current base-sequence order;
 - identity is the string the schema's key selector returns when one is
   supplied, otherwise object reference; invalid keys are source-contract errors and unavailable
@@ -918,7 +926,7 @@ notification count is needed to say so.
 
 There is no `SortRequested` callback or remote-sort mode in version one.
 Sorting is a local table projection; add an explicit external-sort mode only if
-a real consumer requires it.
+a real host requires it.
 
 ## 10. Column widths, resizing, and fit commands
 
@@ -929,7 +937,7 @@ horizontal scroll surface is used. Resizing the host window never redistributes
 or re-measures column widths.
 
 Every column has a deterministic baseline width. A declared `Width` is
-used exactly after its `MinWidth`/`MaxWidth` bounds are applied. When a consumer
+used exactly after its `MinWidth`/`MaxWidth` bounds are applied. When a host
 does not declare one, the control's 150-DIP default is used. An unspecified
 width is not an implicit content-fit mode: initial source data, later data,
 property updates, sorting, filtering, scrolling, and visibility changes MUST
@@ -1104,7 +1112,9 @@ path for column order. Sort is available from the active passive header: Enter o
 Space follows section 9's sort cycle. The column entries use each column's
 localized `DisplayName`, and the commands that name a column place that name into
 a sentence their translation owns; every other label is localized by
-`TableView`'s own resources. They are not host-overridable configuration. This
+`TableView`'s own resources. They are not host-overridable configuration. Catalogue
+authoring and generation follow [localisation](../../docs/localisation.md#synapse).
+The control owns these generic messages without depending on product settings. This
 keeps generated UI self-contained while the host owns its column names and
 header content. Focus returns to the invoking header when the menu closes, in
 the state the request arrived in: a flyout restores focus itself but not with
@@ -1113,7 +1123,7 @@ a keyboard focus ring on the header.
 
 The menu MUST prevent a state with zero visible columns, respect `CanHide`, and
 enable only commands that can currently change layout. It has no extension or
-domain-command injection surface. A consumer that needs a domain command puts
+domain-command injection surface. A host that needs a domain command puts
 it in normal page UI or an interactive control supplied by its header template;
 that control owns its own menu.
 
@@ -1316,7 +1326,7 @@ Row-context behavior:
 - raise `RowContextRequested` with the target item, an immutable selected
   packet, a row `FrameworkElement` placement target, and a point relative to
   that target when pointer-originated (otherwise a null relative point);
-- let the consumer synchronously construct and show a native `MenuFlyout` or
+- let the host synchronously construct and show a native `MenuFlyout` or
   `CommandBarFlyout` with domain-specific commands at that placement target.
 
 `TableView.IconFontFamily` is the icon font the control's own generated menu
@@ -1326,9 +1336,9 @@ into it, which a host cannot be expected to know, and the theme dictionary's key
 is not reachable from `Application.Current.Resources`.
 
 The placement target is presentation context, not durable view-model state. A
-consumer forwards command intent to its view model but creates/shows the flyout
+host forwards command intent to its view model but creates/shows the flyout
 at the view boundary while that target is valid. Closing a flyout returns focus
-through normal native flyout behavior. The consumer owns its menu's labels,
+through normal native flyout behavior. The host owns its menu's labels,
 enablement, keyboard behavior, and accessibility; `TableView` owns only the
 selected/current mechanics and transient placement context. `SuppressRowGestures`
 and interactive cell descendants suppress the row request and retain their own
@@ -1337,10 +1347,10 @@ domain without giving the generic table a domain menu model.
 
 ## 16. Row drag reordering
 
-Row reordering is enabled by default as described in section 5. It supports
-multi-row movement without embedding domain ordering policy.
+Row reordering is disabled by default as described in section 5. When enabled,
+it supports multi-row movement without embedding domain ordering policy.
 
-The consumer MUST set `IsRowReorderingEnabled` to false whenever its external
+The host MUST set `IsRowReorderingEnabled` to false whenever its external
 filter/order cannot map a visual placement to domain ordering. The active table
 sort is the table's own to judge: it offers the drag only while the view shows
 the row order — unsorted, or sorted either way by the column whose
@@ -1348,7 +1358,7 @@ the row order — unsorted, or sorted either way by the column whose
 from a row is section 14's marquee instead. If `IsRowReorderingEnabled` becomes
 false during a drag, or the sort stops showing the row order during one, the
 table cancels the drag, whether or not the rows moved. For a race or command
-failure, the consumer simply does not change (or reconciles) its projection;
+failure, the host simply does not change (or reconciles) its projection;
 there is no post-drop accept/reject protocol.
 
 - a mouse/pen passive row press that ends before the normal drag threshold
@@ -1367,7 +1377,7 @@ there is no post-drop accept/reject protocol.
   packet-internal, and no-change placements are cancelled without an event;
 - `TableView` does not mutate the collection; after the event, the host may
   update its own source;
-- the table returns to idle immediately after the event; the consumer may begin
+- the table returns to idle immediately after the event; the host may begin
   asynchronous domain work and reconcile its own projection;
 - a selected moving packet remains selected. An unselected-row drag preserves
   the prior selection and current item;
@@ -1380,7 +1390,7 @@ invalidation, and invalid drops remove that feedback and leave data/layout
 unchanged. When the host later publishes a changed source, its normal
 repositioning supplies the resulting visual continuity; when it publishes no
 change, rows settle in their original order. The table does not create a
-speculative second order, await a remote result, or require consumer animation
+speculative second order, await a remote result, or require host animation
 coordination.
 
 Direct row reordering is a mouse/pen gesture in version one. On touch,
@@ -1402,7 +1412,7 @@ reconciliation remain outside `TableView`.
 ## 17. Loading and empty states
 
 `TablePlaceholder` has exactly three values: `Empty`, `Loading`, and
-`NoResults`. The consumer sets it, because only the host can tell an empty
+`NoResults`. The host sets it, because only the host can tell an empty
 domain source from a filter that excluded everything, or from a fetch in
 flight. There is no separate loading flag beside it: a boolean qualifying an
 enum is the enum missing a member, and keeping the two apart let a host say
@@ -1427,9 +1437,9 @@ because none of them is derivable—and a host that wants more supplies its own
 content or template. What it replaces is the blank rectangle that a table with
 no rows and nothing configured used to render.
 
-Content and templates otherwise come from the consumer, and the table provides
+Content and templates otherwise come from the host, and the table provides
 layout only. Application-level error, offline, and permission states remain
-outside the table unless the consumer deliberately supplies them as content.
+outside the table unless the host deliberately supplies them as content.
 
 ## 18. Layout persistence
 
@@ -1534,7 +1544,7 @@ itself MUST:
   Direct resize and row/column reorder are mouse/pen gestures in version one;
   standard touch scrolling, selection, and press-and-hold menus remain native
   paths to the corresponding table or domain commands. Where the table or a
-  consumer exposes a custom touch target, its effective target is approximately
+  host exposes a custom touch target, its effective target is approximately
   40 × 40 effective pixels (the visible glyph may be smaller). A dense
   mouse/keyboard-only host need not enlarge every row mechanically;
   mouse/pen marquee selection is intentionally not a touch gesture;
@@ -1581,7 +1591,7 @@ state changes and insertion cues remain clear without custom substitute motion.
 The control's accessibility contract is verified with keyboard-only use,
 Narrator, UI Automation inspection, Light/Dark/High Contrast, animation
 enabled/disabled, the supported allocation and display/text scaling range, and
-long localized content. A consumer template remains responsible for the
+long localized content. A host template remains responsible for the
 accessible name, contrast, state, and input behavior of any custom visual or
 interactive content it introduces.
 
@@ -1636,7 +1646,7 @@ throughput target.
   realization.
 - Pointer movement does not produce layout-persistence events.
 - Reposition and drag feedback use platform-appropriate transitions and require
-  no consumer-visible animation or suppression protocol.
+  no host-visible animation or suppression protocol.
 
 The component introduces no runtime dependency beyond WinUI 3. This keeps
 package size, memory use, and versioning surface small.
@@ -1913,7 +1923,10 @@ owner; `TableView` only validates and produces the DTO.
 ## Appendix B — Core verification checklist
 
 The component is ready when these generic scenarios pass in a WinUI 3 sample or
-host integration. Torrent-specific verification is in Appendix A.
+host integration, with validation scope set by [testing](../../docs/testing.md).
+Appendix A is historical host reference only. Verify the new product against
+the [interface](../../docs/interface.md), [engine](../../docs/engine.md), and
+testing contracts.
 
 1. Typed templates render text, progress, buttons, toggles, and custom controls
    without stealing their normal input, focus, or automation behavior.

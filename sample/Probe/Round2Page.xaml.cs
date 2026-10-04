@@ -102,7 +102,6 @@ public sealed partial class Round2Page : Page
         {
             Path.Combine(AppContext.BaseDirectory, "round2-results.txt"),
             Path.Combine(Path.GetTempPath(), "round2-results.txt"),
-            @"C:\SynoSoftware\TinyTorrent\winui3\round2-results.txt",
         })
         { try { File.WriteAllText(t, text); } catch { } }
         Application.Current.Exit();

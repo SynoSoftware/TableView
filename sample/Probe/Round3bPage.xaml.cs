@@ -26,7 +26,7 @@ public sealed partial class Round3bPage : Page
     private bool _finished;
     private IntPtr _hwnd;
     private IntPtr _site;
-    private const string Out = @"C:\SynoSoftware\TinyTorrent\winui3\q13-q18-results.txt";
+    private static readonly string Out = System.IO.Path.Combine(AppContext.BaseDirectory, "q13-q18-results.txt");
 
     public Round3bPage() { InitializeComponent(); Loaded += OnLoaded; }
 

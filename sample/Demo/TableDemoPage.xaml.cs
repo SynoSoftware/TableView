@@ -23,8 +23,8 @@ public sealed partial class TableDemoPage : Page
     /// <summary>Present only while an agent measures the control. A packaged launch inherits no
     /// arguments, so the switch is also a file; this project is unpackaged, so prefer the
     /// argument.</summary>
-    private const string MeasureFlagPath =
-        "C:/SynoSoftware/TinyTorrent/winui3/sample-measure.flag";
+    private static readonly string MeasureFlagPath =
+        System.IO.Path.Combine(AppContext.BaseDirectory, "sample-measure.flag");
 
     private readonly StringBuilder _log = new();
     private DemoFeed? _feed;
@@ -240,7 +240,7 @@ public sealed partial class TableDemoPage : Page
         }
     }
 
-    private const string ResultsPath = "C:/SynoSoftware/TinyTorrent/winui3/sample-results.txt";
+    private static readonly string ResultsPath = System.IO.Path.Combine(AppContext.BaseDirectory, "sample-results.txt");
 
     private void Finish()
     {

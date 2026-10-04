@@ -7,7 +7,7 @@ namespace Synapse_Sample;
 /// <summary>
 /// Probe stand-in for the table's row panel. Measures to a fixed total width far
 /// wider than any viewport and subtracts a table-owned horizontal offset at arrange
-/// time, exactly as docs/tableview-winui3-design.md section 3 describes.
+/// time, exactly as winui3/docs/archive/tableview-design.md section 3 describes.
 /// </summary>
 public sealed class RowPanel : Panel
 {

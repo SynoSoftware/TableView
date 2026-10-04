@@ -12,7 +12,7 @@ namespace Synapse_Sample;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    /// <summary>Set for the probe harness, which needs to resize the client area.</summary>
+    /// <summary>Sample diagnostics use this to resize the client area.</summary>
     public static MainWindow? Instance;
 
     public MainWindow()

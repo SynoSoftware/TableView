@@ -23,7 +23,7 @@ public sealed partial class Round4Page : Page
     private double _scale = 1.0;
     private bool _finished;
     private IntPtr _hwnd, _site;
-    private const string Out = @"C:\SynoSoftware\TinyTorrent\winui3\round4-verify.txt";
+    private static readonly string Out = System.IO.Path.Combine(AppContext.BaseDirectory, "round4-verify.txt");
 
     public Round4Page() { InitializeComponent(); Loaded += OnLoaded; }
 

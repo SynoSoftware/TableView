@@ -26,8 +26,8 @@ public sealed partial class Round3Page : Page
     private double _scale = 1.0;
     private bool _finished;
     private static readonly Color Grey = Color.FromArgb(255, 128, 128, 128);
-    private const string Out = @"C:\SynoSoftware\TinyTorrent\winui3\round3-results.txt";
-    private const string Ready = @"C:\SynoSoftware\TinyTorrent\winui3\round3-uia-ready.txt";
+    private static readonly string Out = System.IO.Path.Combine(AppContext.BaseDirectory, "round3-results.txt");
+    private static readonly string Ready = System.IO.Path.Combine(AppContext.BaseDirectory, "round3-uia-ready.txt");
 
     public Round3Page() { InitializeComponent(); Loaded += OnLoaded; }
 

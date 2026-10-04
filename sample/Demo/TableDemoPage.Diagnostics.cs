@@ -93,7 +93,7 @@ public sealed partial class TableDemoPage
         if (!Skip("F"))
         {
             Section("F. RenderTargetBitmap of the table");
-            await SavePngAsync("C:/SynoSoftware/TinyTorrent/winui3/sample-table.png");
+            await SavePngAsync(System.IO.Path.Combine(AppContext.BaseDirectory, "sample-table.png"));
             await ReportBitmapAsync();
         }
 
@@ -212,7 +212,7 @@ public sealed partial class TableDemoPage
         ReportRowPitch(list, containers);
 
         Section("C. Header cell boundaries vs row cell boundaries at offset 0");
-        await SavePngAsync("C:/SynoSoftware/TinyTorrent/winui3/sample-offset0.png");
+        await SavePngAsync(System.IO.Path.Combine(AppContext.BaseDirectory, "sample-offset0.png"));
         ReportBoundaries("offset 0", header, containers);
     }
 

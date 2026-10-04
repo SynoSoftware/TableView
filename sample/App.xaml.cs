@@ -38,7 +38,7 @@ public partial class App : Application
             try
             {
                 File.WriteAllText(
-                    "C:/SynoSoftware/TinyTorrent/winui3/sample-crash.txt", e.Exception.ToString());
+                    System.IO.Path.Combine(AppContext.BaseDirectory, "sample-crash.txt"), e.Exception.ToString());
             }
             catch
             {

@@ -80,7 +80,6 @@ public sealed partial class VerifyPage : Page
         {
             Path.Combine(AppContext.BaseDirectory, "verify-results.txt"),
             Path.Combine(Path.GetTempPath(), "verify-results.txt"),
-            @"C:\SynoSoftware\TinyTorrent\winui3\verify-results.txt",
         })
         { try { File.WriteAllText(t, text); } catch { } }
         Application.Current.Exit();

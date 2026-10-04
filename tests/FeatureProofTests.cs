@@ -17,8 +17,8 @@ namespace Synapse_Tests;
 [TestClass]
 public class FeatureProofTests
 {
-    private const string LogPath =
-        "C:/SynoSoftware/TinyTorrent/winui3/proof-run.txt";
+    private static readonly string LogPath =
+        System.IO.Path.Combine(AppContext.BaseDirectory, "proof-run.txt");
 
     [ClassCleanup]
     public static void WriteLog() => Proof.Flush(LogPath);

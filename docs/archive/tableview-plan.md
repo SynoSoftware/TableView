@@ -1,8 +1,14 @@
-# TableView — implementation plan
+# Historical TableView implementation plan
 
-- Specification: `docs/torrent-table-specs.md` (1500 lines, normative)
-- Design: `docs/tableview-winui3-design.md`
-- Glossary: `CONTEXT.md`
+Archived 2026-10-03. The library, sample, and tests now exist. This is the original
+build sequence, not work to repeat. Use the active
+[contract](../tableview-contract.md) and
+[implementation map](../tableview-implementation.md). Paths, toolchain evidence,
+and open questions below belong to the original plan.
+
+- Current specification: [TableView contract](../tableview-contract.md)
+- Historical design: [TableView design](tableview-design.md)
+- Current glossary: [Table vocabulary](../../CONTEXT.md)
 
 Paths in this document are relative to the repository root.
 

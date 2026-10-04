@@ -1,6 +1,12 @@
-# TableView — WinUI 3 design
+# Historical TableView design
 
-- Status: design for `docs/torrent-table-specs.md` version 1
+Archived 2026-10-03. This records construction alternatives and earlier evidence,
+including proposals that differ from the current code. Follow the active
+[contract](../tableview-contract.md) and
+[implementation map](../tableview-implementation.md). Statements below about a
+missing project or pending spike describe their original time, not current status.
+
+- Original status: design for the version-one TableView specification
 - Relationship to the specification: the specification defines observable
   behaviour and ownership. This document defines the WinUI 3 construction that
   produces it: control selection, visual tree, resolved geometry, selection
