@@ -348,6 +348,7 @@ public sealed partial class Table : Control
         _baselineOrder.Clear();
         foreach (Column column in Columns)
         {
+            column.Capture();
             _baselineOrder.Add(new EffectiveColumn(column, IsHierarchyColumn(column)));
         }
 
@@ -588,18 +589,7 @@ public sealed partial class Table : Control
     public IEnumerable? ItemsSource
     {
         get => (IEnumerable?)GetValue(ItemsSourceProperty);
-        set
-        {
-            // After Withdraw the property still holds the withdrawn source, so setting it again
-            // changes nothing the property can see, and the table takes it here instead.
-            if (_personChange == PersonChange.Expected && ReferenceEquals(ItemsSource, value))
-            {
-                SetItemsSource(value);
-                return;
-            }
-
-            SetValue(ItemsSourceProperty, value);
-        }
+        set => SetValue(ItemsSourceProperty, value);
     }
 
     private static void OnItemsSourceChanged(
@@ -630,14 +620,14 @@ public sealed partial class Table : Control
 
     /// <summary>
     /// Drop the source the table has accepted and not yet shown, because the person changed what
-    /// the table is to show, such as another torrent. The rows on screen stay. The next source the
-    /// host sets is the person's change: it applies whole, even with the pointer over the rows,
-    /// as a change named by <see cref="Release"/> does.
+    /// the table is to show, such as another torrent. The rows on screen stay. The next new
+    /// <see cref="ItemsSource"/> value is the person's change: it applies whole, even with the
+    /// pointer over the rows, as a change named by <see cref="Release"/> does.
     /// </summary>
     /// <remarks>
     /// Until then the table no longer follows the withdrawn source's collection notifications, and
-    /// <see cref="ItemsSource"/> still returns it; setting the same instance again is taken as the
-    /// next source.
+    /// <see cref="ItemsSource"/> still returns it. Setting that instance again is not a change, as
+    /// for any dependency property, so the host supplies a new instance, even of the same rows.
     /// </remarks>
     public void Withdraw()
     {

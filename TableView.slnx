@@ -11,7 +11,4 @@
   <Project Path="sample/TableViewSample.csproj">
     <Platform Solution="*|x64" Project="x64" />
   </Project>
-  <Project Path="../Glyphs/src/Glyphs.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
 </Solution>

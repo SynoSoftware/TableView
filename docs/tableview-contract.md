@@ -8,8 +8,8 @@
 This is the reusable control's behavior and public API authority. The
 [implementation map](tableview-implementation.md) records the existing code and
 known gaps; the contract does not claim that every requirement is implemented.
-[Product architecture](../../../docs/contracts/architecture.md) owns application scope, and
-[testing](../../../docs/agents/testing.md) owns validation scope.
+Each host owns its application scope, and [testing](agents/testing.md) owns
+validation scope.
 
 The [hierarchical rows extension](hierarchy.md) is the authority for optional
 child rows. This contract continues to govern shared behavior and flat tables.
@@ -88,7 +88,7 @@ is one of two things: a contract a host binds to, which is section 5's public
 surface and the event payloads; or a mechanism whose price is stated here beside
 it.
 
-Apply the [root rule-handling policy](../../../AGENTS.md#every-rule-states-why)
+Apply the [rule-handling policy](../AGENTS.md#every-rule-states-why)
 when a reason does not hold. Preserve the public and observable contract and
 settled owner rulings: a simpler mechanism may replace an existing one, but
 rewriting the specification cannot turn a regression into intended behavior.
@@ -224,6 +224,8 @@ public sealed class Table : Control
 
     public ListViewSelectionMode SelectionMode { get; set; } // default Extended
     public Selection Selection { get; set; }
+    public Task PrepareSelection(Func<Selection, CancellationToken, Task> prepare,
+        CancellationToken cancellation = default);
     public static void SetIsRowGestureEnabled(DependencyObject element, bool value); // default true
     public static bool GetIsRowGestureEnabled(DependencyObject element);
 
@@ -247,6 +249,7 @@ public sealed class Table : Control
     public Task ViewReady { get; }
     public void Release(IEnumerable<object> items);
     public void Withdraw();
+    public bool FocusRows(FocusState state);
     public void ScrollIntoView(object item);
     public void ScrollIntoView(object item, IEnumerable<object> arrivals);
     public double VerticalOffset { get; }
@@ -696,8 +699,11 @@ moving while they work.
   accepted and not yet shown, and the rows on screen stay until the new source
   arrives, which applies whole, as a change named with `Release` does. Until
   then the table follows no notification of the withdrawn source, and
-  `ItemsSource` still returns it, so setting the same instance again is taken as
-  the new source. One call replaces naming every row of both lists, which looked
+  `ItemsSource` still returns it. The new source is the next new `ItemsSource`
+  value: setting the withdrawn instance again is not a change, as for any
+  dependency property, so a host supplies a new instance even for the same
+  rows. The rule therefore holds whether the host assigns the source in code
+  or binds it. One call replaces naming every row of both lists, which looked
   up each row on the UI thread at every switch.
 - A held row that comes back into the source stops being held.
 - Inside a sort's settling interval the same hold keeps membership, with the
@@ -954,9 +960,9 @@ A language change updates generated headers, open menu labels, placeholders,
 sort status and drag status without recreating the table or changing selection,
 layout or source. New views bind to the host's current prepared `Strings` value.
 Prepare that initial value before creating the first localised bound view.
-Regional formatting remains separate from UI language. The desktop
-[localisation contract](../../../docs/contracts/localisation.md) owns catalogue policy and
-composition protection; the library does not persist a language preference.
+Regional formatting remains separate from UI language. The host owns its own
+catalogue policy and composition protection; the library does not persist a
+language preference.
 
 The declared defaults are: visible, hideable, resizable, non-sortable,
 left-aligned, a `Width` of 150 DIPs, and a `MinWidth` of 0 DIPs, so manual resizing
@@ -1098,7 +1104,7 @@ must not add its standalone control minimum height to the table's own padding,
 because that makes one table's header taller than the other tables' headers.
 
 The retained row appearance has specific exceptions awaiting the
-[hands-on Fluent review](../../../docs/contracts/architecture.md#decisions-still-open): no hover
+[hands-on Fluent review](https://github.com/SynoSoftware/TinyTorrent2/blob/main/docs/contracts/architecture.md#decisions-still-open): no hover
 fill and square corners for edge-to-edge rows. Native row focus is enabled after
 the first product journey verified visible keyboard location, selection,
 Pause/Resume and focus recovery during refresh.
@@ -1574,7 +1580,7 @@ Space sorts as a click does (section 9). The column entries use each column's
 localized `DisplayName`, and the commands that name a column place that name into
 a sentence their translation owns; every other label is localized by
 `Table`'s own `en.json`. They are not host-overridable configuration. Catalogue
-authoring follows [localisation](../../../docs/contracts/localisation.md#tableview).
+authoring follows [text and languages](../AGENTS.md#text-and-languages).
 The control owns these generic messages without depending on product settings. This
 keeps generated UI self-contained while the host owns its column names and
 header content. Focus returns to the invoking header when the menu closes, in
@@ -2084,7 +2090,7 @@ throughput target.
   "before" half was taken against a reconcile that announced every row it moved,
   and that implementation is gone. The "after" half was taken on that host's own
   diagnostics harness, which has been deleted; the harness that replaced it
-  (`lib/TableView/sample/Jobs/JobsPage/Diagnostics.cs`) runs a different
+  (`sample/Jobs/JobsPage/Diagnostics.cs`) runs a different
   feed with different columns, so it tests the same claim on a different list and
   reports its own numbers. Do not quote these four as current.
   The claim is falsifiable and MUST be tested as such —
@@ -2125,7 +2131,7 @@ package size, memory use, and versioning surface small.
 ## Appendix — Core verification checklist
 
 The component is ready when these generic scenarios pass in a WinUI 3 sample or
-host integration, with validation scope set by [testing](../../../docs/agents/testing.md).
+host integration, with validation scope set by [testing](agents/testing.md).
 
 1. Typed templates render text, progress, buttons, toggles, and custom controls
    without stealing their normal input, focus, or automation behavior.

@@ -1,0 +1,74 @@
+<Project>
+  <!--
+    Everything the build generates goes under artifacts/ at the repository root, outside every
+    project folder, so no project's default globs can read it back as source. A host that
+    builds this library from its own tree, such as TinyTorrent through its lib/TableView
+    junction, finds this file first, so the library's output lands here too unless the host
+    passes its own ArtifactsPath.
+  -->
+  <PropertyGroup>
+    <Company>SynoSoftware</Company>
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+  </PropertyGroup>
+
+  <!-- Local builds use local sources; commit-derived metadata otherwise recompiles
+       every project after a documentation-only commit. CI keeps provenance. -->
+  <PropertyGroup Condition="'$(ContinuousIntegrationBuild)' != 'true'">
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <EnableSourceLink>false</EnableSourceLink>
+  </PropertyGroup>
+
+  <!-- WinUI brings WebView2 transitively; exclude its build targets too,
+       because they add browser binaries outside NuGet's runtime assets. -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <PackageReference
+      Include="Microsoft.Web.WebView2"
+      Version="1.0.3719.77"
+      ExcludeAssets="all"
+      PrivateAssets="all"
+      GeneratePathProperty="true"
+    />
+  </ItemGroup>
+
+  <!-- The XAML compiler inspects WebView2 signatures inside WinUI; its
+       projection is needed for compilation, but never copied to output. -->
+  <Target
+    Name="ReferenceWebView2"
+    BeforeTargets="ResolveAssemblyReferences"
+    Condition="'$(UseWinUI)' == 'true'"
+  >
+    <ItemGroup>
+      <Reference
+        Include="$(PkgMicrosoft_Web_WebView2)\lib_manual\net8.0-windows10.0.17763.0\Microsoft.Web.WebView2.Core.Projection.dll"
+        Private="false"
+      />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Generated folders that still appear inside a project folder are never build input.
+
+    WHY THIS EXISTS. The WinUI XAML compiler writes a copy of each XAML file into a "bin-fl"
+    folder, resolving "$(BaseOutputPath)-fl" against the wrong working directory. That copy lands
+    INSIDE the output tree. The SDK's default globs then pick it up as SOURCE on the next build,
+    the compiler writes another copy one level deeper, and the path grows without bound on every
+    build. It reached 18 directory levels and broke the build with
+    "Xaml Internal Error WMC9999: Could not find a part of the path".
+
+    The compiler is a binary we cannot patch. But the recursion only compounds because build
+    output re-enters the build as input. Test runs leave TestResults folders inside test projects
+    the same way. Excluding these folders, at any depth, from the default item globs breaks that
+    loop, so the folders can be written but never consumed, and depth stays constant.
+
+    This must be the DefaultItemExcludes property, not item Remove lines. MSBuild reads every
+    property before any item, so the exclusion is in place when the SDK and Windows App SDK
+    globs run; a Remove here runs before those globs exist and removes nothing.
+
+    Do not remove these without re-testing that a repeated build does not create or deepen a
+    bin-fl folder.
+  -->
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/bin/**;**/obj/**;**/bin-fl/**;**/TestResults/**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

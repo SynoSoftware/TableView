@@ -22,7 +22,7 @@
     -->
     <TestCaseFilter>TestCategory!=Interactive</TestCaseFilter>
     <!-- Relative to this file: the repository's artifacts folder, outside every project. -->
-    <ResultsDirectory>..\..\..\artifacts\TestResults</ResultsDirectory>
+    <ResultsDirectory>..\artifacts\TestResults</ResultsDirectory>
   </RunConfiguration>
 
 </RunSettings>

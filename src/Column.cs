@@ -3,18 +3,28 @@ using Microsoft.UI.Xaml;
 namespace Syno.TableView;
 
 /// <summary>
-/// One column definition. Setup-only schema: <see cref="Table"/> captures every value here
-/// at its first <c>Loaded</c>. Header content and names remain live afterwards.
+/// One column definition. Setup-only schema: <see cref="Table"/> captures it at its first
+/// <c>Loaded</c>, and setting any property afterwards throws, except the live
+/// <see cref="DisplayName"/>, <see cref="ShortName"/> and <see cref="Header"/>.
 /// </summary>
 public sealed partial class Column : DependencyObject
 {
+    private bool _captured;
+
+    internal void Capture() => _captured = true;
+
+    private T RequireSetup<T>(T value) =>
+        _captured
+            ? throw new InvalidOperationException("The schema is fixed at first Loaded.")
+            : value;
+
     /// <summary>
     /// This column's persistence key: stable, unique, and non-empty when it is supplied. Null is a
     /// column the host does not persist, which is the ordinary case for a table whose layout is
     /// never saved. A layout snapshot then carries nothing about it, and a restore leaves it in the
     /// declared order after the columns the snapshot did name.
     /// </summary>
-    public string? Id { get; set; }
+    public string? Id { get; set => field = RequireSetup(value); }
 
     /// <summary>Non-empty localized plain-text name used by generated menus and UI Automation.</summary>
     public static readonly DependencyProperty DisplayNameProperty = DependencyProperty.Register(
@@ -79,10 +89,10 @@ public sealed partial class Column : DependencyObject
         DependencyPropertyChangedEventArgs args
     ) => ((Column)sender).TextChanged?.Invoke(sender, EventArgs.Empty);
 
-    public DataTemplate? HeaderTemplate { get; set; }
+    public DataTemplate? HeaderTemplate { get; set => field = RequireSetup(value); }
 
     /// <summary>Cell content template. It receives the row item as its content.</summary>
-    public DataTemplate? CellTemplate { get; set; }
+    public DataTemplate? CellTemplate { get; set => field = RequireSetup(value); }
 
     /// <summary>
     /// The width of a column whose host declares none, and the narrowest a fill makes a column
@@ -91,29 +101,29 @@ public sealed partial class Column : DependencyObject
     internal const double DefaultWidth = 150;
 
     /// <summary>Baseline width in DIPs. Finite and greater than zero.</summary>
-    public double Width { get; set; } = DefaultWidth;
+    public double Width { get; set => field = RequireSetup(value); } = DefaultWidth;
 
     /// <summary>Lower width bound in DIPs. Finite and non-negative.</summary>
-    public double MinWidth { get; set; }
+    public double MinWidth { get; set => field = RequireSetup(value); }
 
     /// <summary>Whether the column is shown before the user or a restored layout says otherwise.</summary>
-    public bool IsVisible { get; set; } = true;
+    public bool IsVisible { get; set => field = RequireSetup(value); } = true;
 
-    public bool CanHide { get; set; } = true;
+    public bool CanHide { get; set => field = RequireSetup(value); } = true;
 
-    public bool CanResize { get; set; } = true;
+    public bool CanResize { get; set => field = RequireSetup(value); } = true;
 
     /// <summary>
     /// Whether fills may shrink below the fitted width. A column that may, and shows content, still
     /// keeps the default width of 150 DIPs, or its fitted width when that is narrower. Direct
     /// resizing still uses MinWidth.
     /// </summary>
-    public bool CanShrink { get; set; } = true;
+    public bool CanShrink { get; set => field = RequireSetup(value); } = true;
 
     /// <summary>
     /// Whether fills may widen the column past its fitted width. Direct resizing has no maximum.
     /// </summary>
-    public bool CanGrow { get; set; } = true;
+    public bool CanGrow { get; set => field = RequireSetup(value); } = true;
 
     // No per-column icon here on purpose. The one place it would be drawn is the generated menu's
     // column list, and that list is a set of on/off states where the checkmark is the glyph the eye
@@ -121,7 +131,8 @@ public sealed partial class Column : DependencyObject
     // columns and not others would leave the rest of the list indented past a blank. A column's
     // identity already has a home: Header and HeaderTemplate take whatever the host wants to show.
 
-    public HorizontalAlignment CellAlignment { get; set; } = HorizontalAlignment.Left;
+    public HorizontalAlignment CellAlignment { get; set => field = RequireSetup(value); } =
+        HorizontalAlignment.Left;
 
     /// <summary>
     /// Creates a store for the keys this column sorts by, supplied by

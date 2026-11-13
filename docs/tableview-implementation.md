@@ -174,7 +174,7 @@ The native container paints selection and keyboard focus. The row template
 adds only drag opacity; it does not paint an additional selected-row stripe.
 Actual contrast, Narrator,
 and out-of-process automation still require relevant runtime evidence under the
-[testing policy](../../../docs/agents/testing.md).
+[testing policy](agents/testing.md).
 
 ## WinUI list behavior the design depends on
 

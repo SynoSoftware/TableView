@@ -7,7 +7,7 @@ namespace Syno.TableViewSample.Probe;
 /// <summary>
 /// Probe stand-in for the table's row panel. Measures to a fixed total width far
 /// wider than any viewport and subtracts a table-owned horizontal offset at arrange
-/// time, exactly as lib/TableView/docs/archive/tableview-design.md section 3 describes.
+/// time, exactly as docs/archive/tableview-design.md section 3 describes.
 /// </summary>
 public sealed class RowPanel : Panel
 {

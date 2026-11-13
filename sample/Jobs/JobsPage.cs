@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -167,6 +168,7 @@ public sealed partial class JobsPage : Page
     }
 
     /// <summary>Replace the feed with one of <paramref name="rows"/> rows; the caller starts it.</summary>
+    [MemberNotNull(nameof(_feed))]
     private void CreateFeed(int rows)
     {
         _feed?.Stop();
@@ -182,7 +184,7 @@ public sealed partial class JobsPage : Page
     {
         CreateFeed(RowCountButton.IsChecked == true ? LargeRowCount : SmallRowCount);
         Publish();
-        _feed!.Start();
+        _feed.Start();
     }
 
     /// <summary>
