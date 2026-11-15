@@ -521,15 +521,18 @@ public sealed partial class Table
                 // Section 10: a sort command's first order and the first rows after a fill that
                 // found none replace what the screen shows, so a fill then moves nothing the
                 // person did not already change. While this preparation runs the fill waits, and
-                // the finally block below queues it for the layout that shows these rows. A
-                // different list replaces the screen too, but fills only once the person stays
-                // on it: section 10 gives the cost of a fill at every list.
-                if (input.Ordering.Changed || (_filledEmpty && View.Count > 0))
+                // the finally block below queues it for the layout that shows these rows. A list
+                // the person chose (Withdraw) replaces the screen too, but fills only once the
+                // person stays on it: section 10 gives the cost of a fill at every list.
+                if (
+                    input.Ordering.Changed
+                    || (_filledEmpty && View.Count > 0 && !input.Holding.Caused)
+                )
                 {
                     _filledEmpty = false;
                     FillViewport();
                 }
-                else if (prepared.Changes.IsDifferentList)
+                else if (input.Holding.Caused)
                 {
                     DelayFill();
                 }

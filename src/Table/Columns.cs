@@ -67,8 +67,9 @@ public sealed partial class Table
     /// <summary>The same fit for a column the header's separator and menu have resolved.</summary>
     internal void Fit(EffectiveColumn column)
     {
-        if (FitColumn(column))
+        if (FitEach([column]))
         {
+            EffectiveLayout.Rebuild();
             RaiseLayoutChanged(LayoutChange.Fit);
         }
     }
@@ -102,6 +103,7 @@ public sealed partial class Table
         changed |= ScaleToWidth();
         if (changed)
             EffectiveLayout.Rebuild();
+        _personSized = false;
 
         if (
             notify
@@ -254,15 +256,57 @@ public sealed partial class Table
     /// <returns>False when no width changed.</returns>
     private bool FitVisible(bool publish = true, bool reuse = false)
     {
-        bool changed = false;
-
-        foreach (VisibleColumn visible in EffectiveLayout.VisibleColumns)
-        {
-            changed |= FitColumn(visible.Column, publish: false, reuse: reuse);
-        }
+        bool changed = FitEach(
+            EffectiveLayout.VisibleColumns.Select(visible => visible.Column),
+            reuse
+        );
 
         if (changed && publish)
             EffectiveLayout.Rebuild();
+        return changed;
+    }
+
+    /// <summary>
+    /// Fit each column independently, reading the rows a fit measures once for all of them. The
+    /// caller publishes the new widths.
+    /// </summary>
+    /// <returns>False when no width changed.</returns>
+    private bool FitEach(IEnumerable<EffectiveColumn> columns, bool reuse = false)
+    {
+        List<CellsPanel>? panels = null;
+        bool changed = false;
+
+        foreach (EffectiveColumn column in columns)
+        {
+            if (!CanFitColumn(column))
+            {
+                continue;
+            }
+
+            // Keep the unscaled fit: scaling a width already clamped at MinWidth
+            // would change its proportion when the table grows again.
+            if (reuse && _fittedWidths.TryGetValue(column, out double fitted))
+            {
+                changed |= SetColumnWidth(column, fitted, publish: false);
+                continue;
+            }
+
+            panels ??= RealizedPanels(fitting: true).ToList();
+            changed |= FitColumn(column, panels);
+        }
+
+        if (panels is null)
+        {
+            return changed;
+        }
+
+        // An unbounded desired size is not the one the panel arranges with, and the panel is the
+        // only thing that measures a cell at its effective width.
+        foreach (CellsPanel panel in panels)
+        {
+            panel.InvalidateMeasure();
+        }
+
         return changed;
     }
 
@@ -345,7 +389,7 @@ public sealed partial class Table
     private bool _fillPending;
 
     /// <summary>
-    /// Runs while a fill waits for the content to settle, after a different list or a cut
+    /// Runs while a fill waits for the content to settle, after a list the person chose or a cut
     /// (section 10). Each one restarts it, so the lists a person passes through quickly and a
     /// burst of updates fill once.
     /// </summary>
@@ -358,7 +402,7 @@ public sealed partial class Table
             _fillDelay = DispatcherQueue.CreateTimer();
             _fillDelay.IsRepeating = false;
             _fillDelay.Interval = TimeSpan.FromMilliseconds(300);
-            _fillDelay.Tick += (_, _) => FillViewport();
+            _fillDelay.Tick += (_, _) => OnFillDue();
         }
 
         _fillDelay.Stop();
@@ -366,22 +410,69 @@ public sealed partial class Table
     }
 
     /// <summary>
-    /// Section 10: a row cell of this column started to cut its text off. A column at least as
-    /// wide as its last fit was cut by a longer value, so it fills after the delay. A column that
-    /// a fill or the person made narrower than its fit stays, because a fill would only narrow it
-    /// again or undo the person's width.
+    /// The wait ended. A preparation in flight may bring the next list, and a fill now would run
+    /// in the layout that shows it, which is the cost the wait avoids; a header gesture holds the
+    /// geometry it read at the press. Either one waits again. An empty list is not filled: the
+    /// fit would find only the headers and move the columns under the empty-list text, so the
+    /// next list the person stays on fills instead.
     /// </summary>
-    internal void FillAfterCut(Column column)
+    private void OnFillDue()
+    {
+        if (_preparingView || _headerStrip?.HasGesture == true)
+        {
+            DelayFill();
+            return;
+        }
+
+        if (View.Count > 0)
+        {
+            FillViewport();
+        }
+    }
+
+    /// <summary>
+    /// The person set a width since the last fill: a resize or a reset. A cut then fills
+    /// nothing, because the fill would undo that width; the next fill of another kind ends it.
+    /// </summary>
+    private bool _personSized;
+
+    /// <summary>
+    /// Section 10: a cell of <paramref name="panel"/>'s row started to cut off a longer value in
+    /// this column. It fills after the delay when the fill can show the value: the row is one a
+    /// fit measures, no width the person set is in force, and the column is at least as wide as
+    /// its last fit, or that fit found it empty or never measured it. A column a fill made
+    /// narrower than its fit stays, because a fill would only narrow it again.
+    /// </summary>
+    internal void FillAfterCut(CellsPanel panel, Column column)
     {
         if (
             IsAutomaticFillEnabled
+            && !_personSized
             && EffectiveLayout.Find(column) is EffectiveColumn effective
-            && _fittedWidths.TryGetValue(effective, out double fitted)
-            // Half a DIP absorbs the floating-point error of the fill's scaling.
-            && effective.Width + 0.5 >= fitted
+            && (
+                !_fittedWidths.TryGetValue(effective, out double fitted)
+                || _emptyColumns.Contains(effective)
+                // Half a DIP absorbs the floating-point error of the fill's scaling.
+                || effective.Width + 0.5 >= fitted
+            )
+            && RealizedPanels(fitting: true).Contains(panel)
         )
         {
             DelayFill();
+        }
+    }
+
+    /// <summary>
+    /// Section 10: the width the person dragged a column to. A fill still waiting would undo it,
+    /// so the wait ends.
+    /// </summary>
+    internal void ResizeColumn(EffectiveColumn column, double width)
+    {
+        if (SetColumnWidth(column, width))
+        {
+            _fillDelay?.Stop();
+            _personSized = true;
+            RaiseLayoutChanged(LayoutChange.Resize);
         }
     }
 
@@ -414,9 +505,9 @@ public sealed partial class Table
 
     private void FillViewport()
     {
-        // Whatever this call does serves a different list too: it fills now, queues a fill for
-        // the layout after the preparation, or finds the table hidden, unloaded or switched off,
-        // where showing it or switching it on fills.
+        // Whatever this call does also serves the list or the cut a waiting fill was for: it fills
+        // now, queues a fill for the layout after the preparation, or finds the table hidden,
+        // unloaded or switched off, where showing it or switching it on fills.
         _fillDelay?.Stop();
         LayoutUpdated -= OnFillLayout;
         if (!IsAutomaticFillEnabled)
@@ -479,6 +570,11 @@ public sealed partial class Table
         {
             return;
         }
+
+        // The baseline widths are the person's, and a fill still waiting or a later cut would
+        // replace them.
+        _fillDelay?.Stop();
+        _personSized = true;
 
         // SetOrder republishes the layout, which re-realizes each header cell and so clears the
         // sort glyph of the column that had one.
@@ -693,24 +789,15 @@ public sealed partial class Table
         );
     }
 
-    private bool FitColumn(EffectiveColumn column, bool publish = true, bool reuse = false)
+    /// <param name="panels">The rows a fit measures; <see cref="FitEach"/> lays them out again.</param>
+    private bool FitColumn(EffectiveColumn column, List<CellsPanel> panels)
     {
-        if (!CanFitColumn(column))
-        {
-            return false;
-        }
-
-        // Keep the unscaled fit: scaling a width already clamped at MinWidth
-        // would change its proportion when the table grows again.
-        if (reuse && _fittedWidths.TryGetValue(column, out double fitted))
-            return SetColumnWidth(column, fitted, publish);
-
         int index = EffectiveLayout.IndexOfVisible(column);
         double widest = 0;
         bool measured = false;
         bool filled = false;
 
-        foreach (CellsPanel panel in RealizedPanels(fitting: true))
+        foreach (CellsPanel panel in panels)
         {
             // A realized panel is already synced to the current visible columns: a column-set
             // change reconciles every attached panel's cells synchronously, and CellsPanel's
@@ -725,10 +812,6 @@ public sealed partial class Table
             widest = Math.Max(widest, UnboundedWidth(cell));
             filled |= cell is not Header.Cell && HoldsContent(cell);
             measured = true;
-
-            // An unbounded desired size is not the one the panel arranges with, and the panel is
-            // the only thing that measures a cell at its effective width.
-            panel.InvalidateMeasure();
         }
 
         if (!measured)
@@ -738,7 +821,7 @@ public sealed partial class Table
             _emptyColumns.Remove(column);
         else
             _emptyColumns.Add(column);
-        return SetColumnWidth(column, widest, publish);
+        return SetColumnWidth(column, widest, publish: false);
     }
 
     /// <summary>

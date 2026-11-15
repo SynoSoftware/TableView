@@ -56,6 +56,12 @@ public sealed partial class Strip : Control
     private int _activeIndex = -1;
 
     private HeaderGesture _gesture;
+
+    /// <summary>
+    /// A button is down on the header, and the gesture holds geometry it read at the press.
+    /// </summary>
+    internal bool HasGesture => _gesture != HeaderGesture.None;
+
     private uint _pointerId;
     private double _originX;
     private EffectiveColumn? _column;
@@ -508,10 +514,7 @@ public sealed partial class Strip : Control
 
         EndGesture();
 
-        if (_owner!.SetColumnWidth(column, width))
-        {
-            _owner.RaiseLayoutChanged(LayoutChange.Resize);
-        }
+        _owner!.ResizeColumn(column, width);
     }
 
     /// <summary>This column's trailing edge in the strip's own coordinates.</summary>

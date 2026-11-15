@@ -19,6 +19,11 @@ public sealed partial class CellsPanel : Panel
     // Row cells whose template is not built yet, with their columns; see WatchCuts.
     private readonly Dictionary<ContentPresenter, Column> _unwatched = [];
 
+    // The row the last arrange laid out, and whether that arrange showed it for the first time;
+    // see WatchCuts.
+    private object? _arrangedRow;
+    private bool _arrangedNewRow;
+
     private Table? _owner;
     private EffectiveLayout? _layout;
     private bool _isHeader;
@@ -257,10 +262,17 @@ public sealed partial class CellsPanel : Panel
     }
 
     /// <summary>
-    /// Section 10: a text block in a row cell that starts to cut its text off asks the table for a
-    /// fill. A cell's template is built by the first measure that gives it a row, and it stays
-    /// with the cell when the row changes, so each cell's text blocks are watched once.
+    /// Section 10: a text block in a row cell that starts to cut off a longer value asks the table
+    /// for a fill. A cell's template is built by the first measure that gives it a row, and it
+    /// stays with the cell when the row changes, so each cell's text blocks are watched once.
     /// </summary>
+    /// <remarks>
+    /// A text block reports a cut when the arrange that lays it out changes its cut state. The
+    /// arrange that first shows a row in the panel reports the cuts of a row that scrolling, an
+    /// insert, a re-sort or another list put there, and none of those fills, so such a cut asks
+    /// for nothing. A value that grows changes its cell's desired size, so the panel measures and
+    /// arranges again with the same row.
+    /// </remarks>
     private void WatchCuts()
     {
         List<ContentPresenter>? built = null;
@@ -289,9 +301,9 @@ public sealed partial class CellsPanel : Panel
             {
                 text.IsTextTrimmedChanged += (_, _) =>
                 {
-                    if (text.IsTextTrimmed)
+                    if (text.IsTextTrimmed && !_arrangedNewRow)
                     {
-                        _owner?.FillAfterCut(column);
+                        _owner?.FillAfterCut(this, column);
                     }
                 };
             }
@@ -394,6 +406,8 @@ public sealed partial class CellsPanel : Panel
 
         IReadOnlyList<VisibleColumn> visible = _layout.VisibleColumns;
         RequireOneCellPerColumn(visible.Count);
+        _arrangedNewRow = !ReferenceEquals(_arrangedRow, DataContext);
+        _arrangedRow = DataContext;
 
         for (int i = 0; i < visible.Count; i++)
         {

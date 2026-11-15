@@ -119,16 +119,23 @@ order (`Ordering.Changed`) or the first rows after a fill that found none
 `LayoutUpdated` after the layout that realizes the new rows. WinUI raises
 `LayoutUpdated` inside that layout and lays out again what the handler changes
 before the frame renders (`CLayoutManager::UpdateLayout`), so the new rows and
-the new widths appear in one frame. After a different list, `PrepareView` calls
-`DelayFill` instead, which restarts the one-shot 300-ms `_fillDelay` timer; its
-tick calls `FillViewport`. A row panel watches the text blocks of each cell's
-template, which it finds once, in the first measure that builds that template
-(`CellsPanel.WatchCuts`); until then the cell waits in `_unwatched`. A text
-block that starts to cut its text off calls `Table.FillAfterCut`, which
-restarts the same timer while automatic fill is on and the column is at least
-as wide as its last fit (`_fittedWidths`). A tick during a preparation takes the
-`_fillPending` path above, and every `FillViewport` call stops the timer,
-because any fill serves the list on screen. A fit
+the new widths appear in one frame. After a list the person chose
+(`Holding.Caused`, which `Withdraw` arms), `PrepareView` calls `DelayFill`
+instead, which restarts the one-shot 300-ms `_fillDelay` timer; `Withdraw`, a
+completed column resize (`ResizeColumn`) and `ResetLayout` stop it. Its tick,
+`OnFillDue`, starts the wait again during a preparation or a header gesture
+(`Strip.HasGesture`), skips an empty view, and otherwise calls `FillViewport`.
+A row panel watches the text blocks of each cell's template, which it finds
+once, in the first measure that builds that template (`CellsPanel.WatchCuts`);
+until then the cell waits in `_unwatched`. A text block that starts to cut its
+text off calls `Table.FillAfterCut` unless the panel's last arrange showed a new
+row (`_arrangedNewRow`). `FillAfterCut` restarts the same timer while
+automatic fill is on, no width the person set is in force (`_personSized`, which
+every fill clears), the row is one a fit measures, and the column is at least as
+wide as its last fit (`_fittedWidths`), was empty at that fit
+(`_emptyColumns`), or has no fit. Every `FillViewport` call stops the timer,
+because any fill serves the list on screen. A fit reads its rows once for all
+the columns it fits (`FitEach`) and invalidates each row panel once. A fit
 leaves out a row whose cells do not show the view's row at its index, because
 the rows below the screen show a different list's rows only after
 `QueueRebind`. It reads the cells' row (`CellsPanel.DataContext`), not the

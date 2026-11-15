@@ -224,9 +224,10 @@ public class ColumnFitTests
     /// <summary>
     /// A table shown before its rows fills from its headers, and its first rows fill again. Rows
     /// that join the rows on screen resize nothing: a fit to them would move every column in
-    /// front of the person as the data came in. A different list fills only once it has stayed on
-    /// screen for a moment, because a host switches lists at every selection click and a fill at
-    /// each one slowed the clicks.
+    /// front of the person as the data came in. Neither does a different list the person did not
+    /// choose. A list the person chose fills only once it has stayed on screen for a moment,
+    /// because a host switches lists at every selection click and a fill at each one slowed the
+    /// clicks.
     /// </summary>
     [TestMethod]
     public Task ListsThatReplaceTheScreenFillAndJoiningRowsDoNot() =>
@@ -269,7 +270,17 @@ public class ColumnFitTests
                 0.001,
                 "a row joining them resizes nothing"
             );
+            Assert.IsFalse(FillWaits(table), "a row joining them waits for no fill");
 
+            table.ItemsSource = Rows(20, 200);
+            await SettleAsync(table);
+
+            Assert.IsFalse(
+                FillWaits(table),
+                "a different list the person did not choose waits for no fill"
+            );
+
+            table.Withdraw();
             table.ItemsSource = Rows(20, 100);
             await table.ViewReady;
             table.UpdateLayout();
@@ -278,32 +289,60 @@ public class ColumnFitTests
                 300 + Inset(table),
                 TableHarness.EffectiveWidth(table, "a"),
                 0.001,
-                "the layout that shows a different list does not fill"
+                "the layout that shows a list the person chose does not fill"
             );
 
-            var due = Proof.Field<Microsoft.UI.Dispatching.DispatcherQueueTimer>(
-                table,
-                "_fillDelay"
-            );
-            await TableHarness.WaitUntilAsync(() => !due.IsRunning, "the list to stay on screen");
+            await TableHarness.WaitUntilAsync(() => !FillWaits(table), "the list to stay on screen");
             table.UpdateLayout();
 
             Assert.AreEqual(
                 100 + Inset(table),
                 TableHarness.EffectiveWidth(table, "a"),
                 0.001,
-                "a different list fills once it has stayed on screen"
+                "a list the person chose fills once it has stayed on screen"
             );
             Assert.AreEqual(0, events(), "automatic fills report nothing");
         });
 
     /// <summary>
-    /// A value that grows past its fitted column, as a speed does, refits after a pause, because
-    /// its text block reports the cut. A column the person narrowed below its fit stays, because
-    /// a refit would undo the person's width.
+    /// A wait that ends while the next list is being prepared waits again. A fill then would run
+    /// in the layout that shows that list, which is the cost the wait avoids.
     /// </summary>
     [TestMethod]
-    public Task ALongerValueRefitsItsColumnAndANarrowedColumnStays() =>
+    public Task AWaitEndingDuringAPreparationWaitsAgain() =>
+        TestHost.RunAsync(async () =>
+        {
+            Column a = Column("a", 200);
+            a.CanGrow = false;
+            Column b = Column("b", 150);
+            b.CellTemplate = EmptyTemplate;
+            Table table = Build(a, b);
+            table.ItemsSource = Rows(20, 300);
+            await TableHarness.LoadAsync(table);
+            await SettleAsync(table);
+            double fitted = TableHarness.EffectiveWidth(table, "a");
+
+            table.Withdraw();
+            table.ItemsSource = Rows(20, 100);
+            Proof.Call(table, "OnFillDue");
+            await table.ViewReady;
+            table.UpdateLayout();
+
+            Assert.AreEqual(
+                fitted,
+                TableHarness.EffectiveWidth(table, "a"),
+                0.001,
+                "the layout that shows the list does not fill"
+            );
+        });
+
+    /// <summary>
+    /// A value that grows past its fitted column, as a speed does, refits after a pause, because
+    /// its text block reports the cut. Once the person sets a width, a cut refits nothing, because
+    /// a refit would undo that width.
+    /// </summary>
+    [TestMethod]
+    public Task ALongerValueRefitsItsColumnUntilThePersonSetsAWidth() =>
         TestHost.RunAsync(async () =>
         {
             Column a = TestData.Column("a", 200);
@@ -333,15 +372,29 @@ public class ColumnFitTests
                 "the longer value to refit its column"
             );
 
-            TableHarness.SetWidth(table, "a", 30);
+            Proof.Call(table, "ResizeColumn", TableHarness.EffectiveColumn(table, "b"), 77d);
             table.UpdateLayout();
-            await Task.Delay(400);
-            table.UpdateLayout();
+            TextBlock text = Proof
+                .Descendants<TextBlock>(table)
+                .First(block => block.Text == rows[0].Text);
+            bool cut = false;
+            text.IsTextTrimmedChanged += (_, _) => cut = text.IsTextTrimmed;
+            rows[0].Text += " that grew again";
+            await TableHarness.WaitUntilAsync(
+                () =>
+                {
+                    table.UpdateLayout();
+                    return cut;
+                },
+                "the text block to report its cut"
+            );
+
+            Assert.IsFalse(FillWaits(table), "the cut waits for no fill");
             Assert.AreEqual(
-                30d,
-                TableHarness.EffectiveWidth(table, "a"),
+                77d,
+                TableHarness.EffectiveWidth(table, "b"),
                 0d,
-                "the narrowed column stays"
+                "the width the person set stays"
             );
         });
 
@@ -387,6 +440,7 @@ public class ColumnFitTests
                 0.001,
                 "the re-sort took the wide row away and resized nothing"
             );
+            Assert.IsFalse(FillWaits(table), "the re-sort waits for no fill");
         });
 
     [TestMethod]
@@ -463,7 +517,8 @@ public class ColumnFitTests
             await TableHarness.WaitUntilAsync(() => !timer.IsRunning, "the first resize to settle");
             double before = TableHarness.EffectiveWidth(table, "a");
 
-            // They join the rows on screen; a different list would fill once it stayed on screen.
+            // They join the rows on screen; a list the person chose would fill once it stayed on
+            // screen.
             List<FitRow> arrived = Rows(20, 600);
             arrived.AddRange(shown);
             table.ItemsSource = arrived;
@@ -891,6 +946,11 @@ public class ColumnFitTests
         table.Height = 220;
         return table;
     }
+
+    /// <summary>A fill waits for the content to settle (section 10).</summary>
+    private static bool FillWaits(Table table) =>
+        Proof.Field<Microsoft.UI.Dispatching.DispatcherQueueTimer?>(table, "_fillDelay")?.IsRunning
+        == true;
 
     private static async Task SettleAsync(Table table)
     {

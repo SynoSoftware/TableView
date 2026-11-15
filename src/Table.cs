@@ -622,7 +622,8 @@ public sealed partial class Table : Control
     /// Drop the source the table has accepted and not yet shown, because the person changed what
     /// the table is to show, such as another torrent. The rows on screen stay. The next new
     /// <see cref="ItemsSource"/> value is the person's change: it applies whole, even with the
-    /// pointer over the rows, as a change named by <see cref="Release"/> does.
+    /// pointer over the rows, as a change named by <see cref="Release"/> does, and while automatic
+    /// fill is on the table fills for it once it has stayed on screen (section 10).
     /// </summary>
     /// <remarks>
     /// Until then the table no longer follows the withdrawn source's collection notifications, and
@@ -633,6 +634,8 @@ public sealed partial class Table : Control
     {
         _personChange = PersonChange.Expected;
         _source.Withdraw(_shownSource);
+        // A fill still waiting is for rows the person has left.
+        _fillDelay?.Stop();
         if (_preparingView)
         {
             Supersede();
